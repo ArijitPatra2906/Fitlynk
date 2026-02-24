@@ -1,9 +1,10 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  output: "export", // For static export to Capacitor
+  // Use "export" for Capacitor builds, comment out for dev
+  // output: "export",
   images: {
-    unoptimized: true, // Required for static export
+    unoptimized: true,
   },
 };
 
