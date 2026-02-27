@@ -3,13 +3,16 @@ import mongoose, { Schema, model, models } from "mongoose";
 export interface IUser {
   _id: mongoose.Types.ObjectId;
   email: string;
-  password: string;
+  password?: string; // Optional for OAuth users
   name: string;
   avatar_url?: string;
   height?: number;
+  weight_kg?: number;
   date_of_birth?: Date;
   gender?: "male" | "female" | "other";
   units: "metric" | "imperial";
+  google_id?: string; // For Google OAuth
+  auth_provider: "email" | "google";
   created_at: Date;
   updated_at: Date;
 }
@@ -25,8 +28,7 @@ const UserSchema = new Schema<IUser>(
     },
     password: {
       type: String,
-      required: [true, "Password is required"],
-      minlength: [8, "Password must be at least 8 characters"],
+      minlength: [6, "Password must be at least 6 characters"],
     },
     name: {
       type: String,
@@ -38,6 +40,13 @@ const UserSchema = new Schema<IUser>(
     },
     height: {
       type: Number,
+      min: [50, "Height must be at least 50 cm"],
+      max: [300, "Height cannot exceed 300 cm"],
+    },
+    weight_kg: {
+      type: Number,
+      min: [20, "Weight must be at least 20 kg"],
+      max: [500, "Weight cannot exceed 500 kg"],
     },
     date_of_birth: {
       type: Date,
@@ -51,6 +60,16 @@ const UserSchema = new Schema<IUser>(
       enum: ["metric", "imperial"],
       default: "metric",
     },
+    google_id: {
+      type: String,
+      unique: true,
+      sparse: true,
+    },
+    auth_provider: {
+      type: String,
+      enum: ["email", "google"],
+      default: "email",
+    },
   },
   {
     timestamps: { createdAt: "created_at", updatedAt: "updated_at" },
@@ -59,6 +78,7 @@ const UserSchema = new Schema<IUser>(
 
 // Indexes
 UserSchema.index({ email: 1 });
+UserSchema.index({ google_id: 1 });
 
 const User = models.User || model<IUser>("User", UserSchema);
 

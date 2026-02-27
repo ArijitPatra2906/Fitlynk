@@ -3,7 +3,6 @@
 import { Icon } from "@/components/ui/icon";
 import { ProgressRing } from "@/components/ui/progress-ring";
 import { MacroPill } from "@/components/ui/macro-pill";
-import { BottomNav } from "@/components/layout/bottom-nav";
 import Link from "next/link";
 
 const meals = [
@@ -30,26 +29,7 @@ const meals = [
 
 export default function NutritionPage() {
   return (
-    <div className="flex flex-col h-screen bg-[#0B0D17] overflow-hidden">
-      {/* Header - Fixed */}
-      <div className="flex-shrink-0 px-6 pt-safe pb-3 flex items-center justify-between bg-[#0B0D17] border-b border-white/5">
-        <div className="text-[22px] font-extrabold text-white">Nutrition</div>
-        <div className="flex gap-1.5 bg-[#131520] rounded-xl p-1 border border-white/5">
-          {["Today", "Week"].map((label, i) => (
-            <div
-              key={label}
-              className={`py-1.5 px-3.5 rounded-lg text-[12px] font-semibold ${
-                i === 0 ? "bg-blue-600 text-white" : "text-gray-400"
-              }`}
-            >
-              {label}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto px-6 pt-4 pb-4">
+    <div className="px-6 pt-4 pb-4">
         {/* Macro Summary */}
         <div className="bg-[#131520] border border-white/5 rounded-[22px] p-[18px] mb-4 flex items-center gap-4">
           <ProgressRing percent={77} size={72} stroke={6} color="#3B82F6" label="1847" sublabel="kcal" />
@@ -99,10 +79,6 @@ export default function NutritionPage() {
             )}
           </div>
         ))}
-      </div>
-
-      {/* Bottom Navigation - Fixed */}
-      <BottomNav />
     </div>
   );
 }

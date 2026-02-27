@@ -1,7 +1,6 @@
 "use client";
 
 import { Icon } from "@/components/ui/icon";
-import Link from "next/link";
 
 const results = [
   { name: "Chicken Breast", brand: "USDA", cal: 165, p: 31, c: 0, f: 3.6 },
@@ -13,24 +12,20 @@ const results = [
 
 export default function FoodSearchPage() {
   return (
-    <div className="flex flex-col min-h-screen bg-[#0B0D17]">
-      {/* Header */}
-      <div className="px-6 py-3 flex items-center gap-3.5">
-        <Link href="/nutrition">
-          <Icon name="arrowLeft" size={22} color="#64748B" />
-        </Link>
-        <div className="flex-1 flex items-center gap-2.5 bg-[#131520] border border-blue-500/30 rounded-2xl py-3 px-3.5">
+    <div>
+      {/* Search Bar (custom, below AppBar) */}
+      <div className="px-6 pt-3 pb-3 bg-[#0B0D17] border-b border-white/5">
+        <div className="flex items-center gap-2.5 bg-[#131520] border border-blue-500/30 rounded-2xl py-3 px-3.5">
           <Icon name="search" size={16} color="#3B82F6" />
           <span className="text-[14px] text-gray-400">Search food or scan barcode…</span>
         </div>
-        <div className="w-[42px] h-[42px] rounded-2xl bg-blue-500/15 border border-blue-500/20 flex items-center justify-center flex-shrink-0">
-          <Icon name="camera" size={18} color="#3B82F6" />
-        </div>
       </div>
 
-      {/* Tags */}
-      <div className="px-6 pt-4 pb-2">
-        <div className="flex gap-2 overflow-x-auto pb-1">
+      {/* Content */}
+      <div>
+        {/* Tags */}
+        <div className="px-6 pt-4 pb-2">
+          <div className="flex gap-2 overflow-x-auto pb-1">
           {["⭐ Favourites", "🕒 Recent", "🥣 Breakfast", "🍗 Proteins"].map((tag) => (
             <div
               key={tag}
@@ -43,11 +38,11 @@ export default function FoodSearchPage() {
               {tag}
             </div>
           ))}
+          </div>
         </div>
-      </div>
 
-      {/* Results */}
-      <div className="flex-1 overflow-y-auto px-6">
+        {/* Results */}
+        <div className="px-6 pb-4">
         <div className="text-[12px] text-gray-400 font-semibold mb-2.5 pt-1">
           SEARCH RESULTS — per 100g
         </div>
@@ -80,6 +75,7 @@ export default function FoodSearchPage() {
             </button>
           </div>
         ))}
+        </div>
       </div>
     </div>
   );

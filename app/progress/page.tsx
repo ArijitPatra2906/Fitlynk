@@ -1,7 +1,6 @@
 "use client";
 
 import { Icon } from "@/components/ui/icon";
-import { BottomNav } from "@/components/layout/bottom-nav";
 
 const weights = [83.2, 82.9, 82.5, 82.1, 81.8, 81.5, 81.2];
 
@@ -19,28 +18,22 @@ export default function ProgressPage() {
   });
 
   return (
-    <div className="flex flex-col h-screen overflow-hidden bg-[#0B0D17]">
-      {/* Header */}
-      <div className="px-6 pt-4">
-        <div className="text-[22px] font-extrabold text-white mb-4">Progress</div>
-        <div className="flex gap-2 mb-4">
-          {["Weight", "Macros", "Workouts", "Photos"].map((tab, i) => (
-            <div
-              key={tab}
-              className={`py-1.5 px-3.5 rounded-xl text-[12px] font-semibold ${
-                i === 0
-                  ? "bg-blue-600 text-white"
-                  : "bg-[#131520] border border-white/5 text-gray-400"
-              }`}
-            >
-              {tab}
-            </div>
-          ))}
-        </div>
+    <div className="px-6 pt-4 pb-4">
+      {/* Tabs */}
+      <div className="flex gap-2 mb-4">
+        {["Weight", "Macros", "Workouts", "Photos"].map((tab, i) => (
+          <div
+            key={tab}
+            className={`py-1.5 px-3.5 rounded-xl text-[12px] font-semibold ${
+              i === 0
+                ? "bg-blue-600 text-white"
+                : "bg-[#131520] border border-white/5 text-gray-400"
+            }`}
+          >
+            {tab}
+          </div>
+        ))}
       </div>
-
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto px-6 pb-4">
         {/* Weight Chart */}
         <div className="bg-[#131520] border border-white/5 rounded-[22px] p-[18px] mb-3.5">
           <div className="flex justify-between items-start mb-3.5">
@@ -140,10 +133,6 @@ export default function ProgressPage() {
             </div>
           ))}
         </div>
-      </div>
-
-      {/* Bottom Navigation */}
-      <BottomNav />
     </div>
   );
 }
