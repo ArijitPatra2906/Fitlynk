@@ -368,65 +368,95 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Activity Row */}
-        <div className='grid grid-cols-3 gap-3 mb-4'>
+        {/* Activity Metrics - 2x2 Grid */}
+        <div className='grid grid-cols-2 gap-3 mb-4'>
+          {/* Streak Card */}
           <div className='bg-[#131520] border border-white/5 rounded-2xl p-4'>
             <div className='flex items-center gap-2 mb-3'>
-              <div className='w-[30px] h-[30px] rounded-xl bg-red-500/15 flex items-center justify-center'>
-                <Icon name='fire' size={16} color='#EF4444' />
+              <div className='w-[34px] h-[34px] rounded-xl bg-red-500/15 flex items-center justify-center'>
+                <Icon name='fire' size={18} color='#EF4444' />
               </div>
-              <span className='text-[11px] text-gray-400 font-semibold uppercase tracking-wide'>
+              <span className='text-[12px] text-gray-400 font-semibold uppercase tracking-wide'>
                 Streak
               </span>
             </div>
-            <div className='text-[26px] font-extrabold text-white'>
-              {loading ? '...' : streak}
+            <div className='flex items-baseline gap-1'>
+              <div className='text-[32px] font-extrabold text-white leading-none'>
+                {loading ? '...' : streak}
+              </div>
+              <span className='text-[14px] text-gray-400 font-medium'>days</span>
             </div>
-            <div className='text-[12px] text-gray-400'>days 🔥</div>
+            <div className='mt-2 text-[12px] text-red-400'>🔥 Keep it up!</div>
           </div>
 
+          {/* Water Card */}
           <div className='bg-[#131520] border border-white/5 rounded-2xl p-4'>
             <div className='flex items-center gap-2 mb-3'>
-              <div className='w-[30px] h-[30px] rounded-xl bg-green-500/15 flex items-center justify-center'>
-                <Icon name='water' size={16} color='#10B981' />
+              <div className='w-[34px] h-[34px] rounded-xl bg-blue-500/15 flex items-center justify-center'>
+                <Icon name='water' size={18} color='#3B82F6' />
               </div>
-              <span className='text-[11px] text-gray-400 font-semibold uppercase tracking-wide'>
+              <span className='text-[12px] text-gray-400 font-semibold uppercase tracking-wide'>
                 Water
               </span>
             </div>
-            <div className='text-[26px] font-extrabold text-white'>
-              {loading ? '...' : (waterIntake / 1000).toFixed(1)}
-              <span className='text-[13px] text-gray-400 font-normal'>L</span>
+            <div className='flex items-baseline gap-1'>
+              <div className='text-[32px] font-extrabold text-white leading-none'>
+                {loading ? '...' : (waterIntake / 1000).toFixed(1)}
+              </div>
+              <span className='text-[14px] text-gray-400 font-medium'>L</span>
             </div>
+            <div className='mt-2 text-[12px] text-blue-400'>💧 Stay hydrated</div>
           </div>
 
+          {/* Steps Card */}
           <button
             className='bg-[#131520] border border-white/5 rounded-2xl p-4 text-left w-full hover:border-purple-500/30 transition-colors'
             onClick={() => setStepModalOpen(true)}
           >
             <div className='flex items-center gap-2 mb-3'>
-              <div className='w-[30px] h-[30px] rounded-xl bg-purple-500/15 flex items-center justify-center'>
-                <Icon name='activity' size={16} color='#A855F7' />
+              <div className='w-[34px] h-[34px] rounded-xl bg-purple-500/15 flex items-center justify-center'>
+                <Icon name='activity' size={18} color='#A855F7' />
               </div>
-              <span className='text-[11px] text-gray-400 font-semibold uppercase tracking-wide'>
+              <span className='text-[12px] text-gray-400 font-semibold uppercase tracking-wide'>
                 Steps
               </span>
             </div>
-            <div className='text-[26px] font-extrabold text-white'>
-              {dailySteps.toLocaleString()}
+            <div className='flex items-baseline gap-1 mb-2'>
+              <div className='text-[32px] font-extrabold text-white leading-none'>
+                {dailySteps.toLocaleString()}
+              </div>
             </div>
-            <div className='w-full h-[3px] bg-[#1e2030] rounded-full mt-2'>
+            <div className='w-full h-1.5 bg-[#1e2030] rounded-full overflow-hidden'>
               <div
-                className='h-full bg-purple-500 rounded-full transition-all'
+                className='h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all'
                 style={{
                   width: `${Math.min(100, (dailySteps / stepGoal) * 100)}%`,
                 }}
               />
             </div>
-            <div className='text-[11px] text-gray-400 mt-1'>
-              of {stepGoal.toLocaleString()} goal
+            <div className='text-[11px] text-gray-400 mt-1.5'>
+              {Math.round((dailySteps / stepGoal) * 100)}% of {stepGoal.toLocaleString()}
             </div>
           </button>
+
+          {/* Active Minutes Card */}
+          <div className='bg-[#131520] border border-white/5 rounded-2xl p-4'>
+            <div className='flex items-center gap-2 mb-3'>
+              <div className='w-[34px] h-[34px] rounded-xl bg-green-500/15 flex items-center justify-center'>
+                <Icon name='zap' size={18} color='#10B981' />
+              </div>
+              <span className='text-[12px] text-gray-400 font-semibold uppercase tracking-wide'>
+                Active
+              </span>
+            </div>
+            <div className='flex items-baseline gap-1'>
+              <div className='text-[32px] font-extrabold text-white leading-none'>
+                {loading ? '...' : '0'}
+              </div>
+              <span className='text-[14px] text-gray-400 font-medium'>min</span>
+            </div>
+            <div className='mt-2 text-[12px] text-green-400'>⚡ Get moving</div>
+          </div>
         </div>
 
         {/* Recent Activity */}
@@ -559,7 +589,7 @@ export default function DashboardPage() {
       {/* FAB Button */}
       <button
         onClick={() => setFabOpen(!fabOpen)}
-        className='absolute bottom-20 right-6 w-[52px] h-[52px] rounded-[18px] bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-[0_8px_24px_rgba(59,130,246,0.5)] z-10 transition-transform'
+        className='absolute bottom-6 right-6 w-[52px] h-[52px] rounded-[18px] bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-[0_8px_24px_rgba(59,130,246,0.5)] z-10 transition-transform'
         style={{ transform: fabOpen ? 'rotate(45deg)' : 'rotate(0)' }}
       >
         <Icon name='plus' size={24} color='white' strokeWidth={2.5} />

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Icon } from '@/components/ui/icon'
 
@@ -9,6 +9,8 @@ export default function GoalsOnboardingPage() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [step, setStep] = useState<'goal' | 'calories'>('goal')
+  const [loading, setLoading] = useState(true)
+  const [userData, setUserData] = useState<any>(null)
 
   const [formData, setFormData] = useState({
     goal_type: 'maintain' as 'lose' | 'maintain' | 'gain',
@@ -23,6 +25,83 @@ export default function GoalsOnboardingPage() {
       | 'very_active'
       | 'extra_active',
   })
+
+  // Calculate TDEE using Mifflin-St Jeor equation
+  const calculateTDEE = (user: any, activityLevel: string) => {
+    if (!user?.weight_kg || !user?.height || !user?.date_of_birth || !user?.gender) {
+      return 2400 // Fallback
+    }
+
+    // Calculate age from date of birth
+    const birthDate = new Date(user.date_of_birth)
+    const today = new Date()
+    let age = today.getFullYear() - birthDate.getFullYear()
+    const monthDiff = today.getMonth() - birthDate.getMonth()
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+      age--
+    }
+
+    // Mifflin-St Jeor BMR calculation
+    let bmr: number
+    if (user.gender === 'male') {
+      bmr = 10 * user.weight_kg + 6.25 * user.height - 5 * age + 5
+    } else {
+      bmr = 10 * user.weight_kg + 6.25 * user.height - 5 * age - 161
+    }
+
+    // Activity multipliers
+    const activityMultipliers: Record<string, number> = {
+      sedentary: 1.2,      // Little or no exercise
+      light: 1.375,        // Light exercise 1-3 days/week
+      moderate: 1.55,      // Moderate exercise 3-5 days/week
+      very_active: 1.725,  // Hard exercise 6-7 days/week
+      extra_active: 1.9,   // Very hard exercise & physical job
+    }
+
+    const tdee = Math.round(bmr * (activityMultipliers[activityLevel] || 1.55))
+    return tdee
+  }
+
+  // Fetch user data and calculate initial calories
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const { getAuthToken } = await import('@/lib/auth/auth-token')
+        const { apiClient } = await import('@/lib/api/client')
+        const token = await getAuthToken()
+
+        if (!token) {
+          router.push('/login')
+          return
+        }
+
+        const response = await apiClient.get('/api/auth/me', token)
+
+        if (response.success && response.data) {
+          setUserData(response.data)
+
+          // Calculate TDEE based on user data
+          const tdee = calculateTDEE(response.data, 'moderate')
+          const macros = calculateMacros('maintain', tdee)
+
+          setFormData({
+            goal_type: 'maintain',
+            calorie_goal: tdee,
+            protein_g: macros.protein,
+            carbs_g: macros.carbs,
+            fat_g: macros.fat,
+            activity_level: 'moderate',
+          })
+        }
+      } catch (err) {
+        console.error('Failed to fetch user data:', err)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchUserData()
+  }, [router])
 
   // Calculate macros based on goal type
   const calculateMacros = (goalType: string, calories: number) => {
@@ -53,10 +132,22 @@ export default function GoalsOnboardingPage() {
   }
 
   const handleGoalTypeChange = (goalType: 'lose' | 'maintain' | 'gain') => {
-    const macros = calculateMacros(goalType, formData.calorie_goal)
+    // Calculate base TDEE
+    const tdee = calculateTDEE(userData, formData.activity_level)
+
+    // Adjust calories based on goal
+    let adjustedCalories = tdee
+    if (goalType === 'lose') {
+      adjustedCalories = Math.round(tdee * 0.85) // 15% deficit
+    } else if (goalType === 'gain') {
+      adjustedCalories = Math.round(tdee * 1.10) // 10% surplus
+    }
+
+    const macros = calculateMacros(goalType, adjustedCalories)
     setFormData({
       ...formData,
       goal_type: goalType,
+      calorie_goal: adjustedCalories,
       protein_g: macros.protein,
       carbs_g: macros.carbs,
       fat_g: macros.fat,
@@ -118,7 +209,7 @@ export default function GoalsOnboardingPage() {
     switch (step) {
       case 'goal':
         return (
-          <div className='space-y-6'>
+          <div className='space-y-6 flex-1 flex flex-col justify-center'>
             <div className='text-center'>
               <h1 className='text-[28px] font-extrabold text-white tracking-tight mb-2'>
                 What's your goal?
@@ -193,22 +284,19 @@ export default function GoalsOnboardingPage() {
 
       case 'calories':
         return (
-          <div className='space-y-6'>
-            <button
-              onClick={() => setStep('goal')}
-              className='flex items-center gap-2 text-gray-400 hover:text-white transition-colors'
-            >
-              <Icon name='arrowLeft' size={20} color='#9CA3AF' />
-              <span className='text-[14px]'>Back</span>
-            </button>
-
+          <div className='space-y-6 flex-1 flex flex-col'>
             <div className='text-center'>
               <h1 className='text-[28px] font-extrabold text-white tracking-tight mb-2'>
                 Daily Calorie Goal
               </h1>
-              <p className='text-[14px] text-gray-400'>
-                How many calories do you want to consume per day?
+              <p className='text-[14px] text-gray-400 mb-2'>
+                Based on your profile, we suggest this daily calorie target
               </p>
+              {userData && (
+                <p className='text-[12px] text-gray-500'>
+                  Calculated using your age, weight, height, and activity level
+                </p>
+              )}
             </div>
 
             <div className='bg-gradient-to-br from-blue-600/20 to-blue-700/20 border border-blue-500/30 rounded-3xl p-8 text-center'>
@@ -270,21 +358,40 @@ export default function GoalsOnboardingPage() {
               ))}
             </div>
 
-            <button
-              onClick={handleSubmit}
-              disabled={saving}
-              className='w-full py-4 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-white text-base font-bold shadow-[0_8px_24px_rgba(59,130,246,0.35)] disabled:opacity-50 disabled:cursor-not-allowed'
-            >
-              {saving ? 'Setting Up...' : 'Complete Setup'}
-            </button>
+            <div className='flex gap-3'>
+              <button
+                onClick={() => setStep('goal')}
+                className='px-6 py-4 rounded-2xl border border-white/15 bg-[#131520] text-white text-base font-semibold hover:border-white/30 transition-colors'
+              >
+                Back
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={saving}
+                className='flex-1 py-4 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-white text-base font-bold shadow-[0_8px_24px_rgba(59,130,246,0.35)] disabled:opacity-50 disabled:cursor-not-allowed'
+              >
+                {saving ? 'Setting Up...' : 'Complete Setup'}
+              </button>
+            </div>
           </div>
         )
     }
   }
 
+  if (loading) {
+    return (
+      <div className='min-h-screen bg-[#0B0D17] flex items-center justify-center'>
+        <div className='text-center'>
+          <div className='w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto mb-4' />
+          <p className='text-gray-400 text-sm'>Calculating your personalized goals...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
-    <div className='min-h-screen bg-[#0B0D17] flex items-center justify-center px-6 py-8 pt-16'>
-      <div className='w-full max-w-md'>
+    <div className='min-h-screen bg-[#0B0D17] flex flex-col px-6 py-8 pt-16'>
+      <div className='w-full max-w-md mx-auto flex-1 flex flex-col'>
         {/* Progress Indicator */}
         <div className='flex items-center justify-center gap-2 mb-8'>
           {['goal', 'calories'].map((s, i) => (

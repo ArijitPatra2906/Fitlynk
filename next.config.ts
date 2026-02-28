@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
     unoptimized: true,
   },
   // Disable automatic trailing slashes for Capacitor compatibility
-  trailingSlash: true,
+  trailingSlash: false,
 }
 
 export default nextConfig

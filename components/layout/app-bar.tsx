@@ -79,19 +79,12 @@ const settingsGoalsConfig: AppBarConfig = {
 
 const routeConfigs: Record<string, AppBarConfig> = {
   '/dashboard': dashboardConfig,
-  '/dashboard/': dashboardConfig,
   '/exercise': exerciseConfig,
-  '/exercise/': exerciseConfig,
   '/nutrition': nutritionConfig,
-  '/nutrition/': nutritionConfig,
   '/progress': progressConfig,
-  '/progress/': progressConfig,
   '/workout': workoutConfig,
-  '/workout/': workoutConfig,
   '/food-search': foodSearchConfig,
-  '/food-search/': foodSearchConfig,
   '/settings/goals': settingsGoalsConfig,
-  '/settings/goals/': settingsGoalsConfig,
 }
 
 export function AppBar() {
@@ -104,28 +97,24 @@ export function AppBar() {
 
   // Set greeting and fetch user data on client side only
   useEffect(() => {
-    console.log('[AppBar] useEffect triggered, pathname:', pathname)
     setGreeting(getGreeting())
     setMounted(true)
 
     // Fetch user data
     const fetchUser = async () => {
       try {
-        console.log('[AppBar] Fetching user data...')
         const { getAuthToken } = await import('@/lib/auth/auth-token')
         const { apiClient } = await import('@/lib/api/client')
         const token = await getAuthToken()
 
         if (!token) {
-          console.log('[AppBar] No token found')
           return
         }
 
         const response = await apiClient.get('/api/auth/me', token)
-        console.log('[AppBar] User data response:', response)
         if (response.success && response.data) {
           setUserName(response.data.name?.split(' ')[0] || 'User')
-          setUserAvatar(response.data.image || null)
+          setUserAvatar(response.data.avatar_url || null)
         }
       } catch (error) {
         console.error('[AppBar] Failed to fetch user data:', error)
@@ -139,22 +128,14 @@ export function AppBar() {
   const hideAppBarPages = [
     '/',
     '/login',
-    '/login/',
     '/register',
-    '/register/',
     '/onboarding',
-    '/onboarding/',
     '/workout',
-    '/workout/',
     '/profile',
-    '/profile/',
   ]
   if (hideAppBarPages.includes(pathname)) {
-    console.log('[AppBar] Hiding app bar for pathname:', pathname)
     return null
   }
-
-  console.log('[AppBar] Rendering app bar for pathname:', pathname)
 
   const config = routeConfigs[pathname] || { title: 'Fitlynk' }
 

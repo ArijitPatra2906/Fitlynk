@@ -262,7 +262,7 @@ export default function OnboardingPage() {
             disabled={loading}
             className='w-full py-4 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-white text-base font-bold text-center shadow-[0_8px_24px_rgba(59,130,246,0.35)] disabled:opacity-50 disabled:cursor-not-allowed mt-4'
           >
-            {loading ? 'Completing Profile...' : 'Complete Profile'}
+            {loading ? 'Saving...' : 'Choose Your Goal'}
           </button>
         </form>
       </div>
