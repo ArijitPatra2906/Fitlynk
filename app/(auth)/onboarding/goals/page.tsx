@@ -71,7 +71,6 @@ export default function GoalsOnboardingPage() {
         const token = await getAuthToken()
 
         if (!token) {
-          router.push('/login')
           return
         }
 

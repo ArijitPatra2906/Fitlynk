@@ -1,10 +1,16 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { Icon } from '@/components/ui/icon'
 import { ProgressRing } from '@/components/ui/progress-ring'
 import { MacroPill } from '@/components/ui/macro-pill'
 import { StepModal } from '@/components/dashboard/step-modal'
+import {
+  DashboardCalorieSkeleton,
+  DashboardMetricCardSkeleton,
+  DashboardActivitySkeleton,
+} from '@/components/ui/skeleton'
 import { stepTracker } from '@/lib/services/step-tracker'
 import Link from 'next/link'
 
@@ -31,6 +37,7 @@ interface RecentActivity {
 }
 
 export default function DashboardPage() {
+  const router = useRouter()
   const [fabOpen, setFabOpen] = useState(false)
   const [stepModalOpen, setStepModalOpen] = useState(false)
   const [dailySteps, setDailySteps] = useState(0)
@@ -68,7 +75,20 @@ export default function DashboardPage() {
 
         if (!token) {
           console.error('No auth token found')
+          router.push('/login')
           return
+        }
+
+        // Check if user has completed onboarding
+        const userRes = await apiClient.get('/api/auth/me', token)
+        if (userRes.success && userRes.data) {
+          const user = userRes.data
+          // Check if onboarding is incomplete
+          if (!user.onboarding_completed) {
+            console.log('[Dashboard] User onboarding incomplete, redirecting to onboarding')
+            router.push('/onboarding')
+            return
+          }
         }
 
         // Fetch today's meals and calculate nutrition
@@ -318,6 +338,9 @@ export default function DashboardPage() {
       {/* Scrollable Content */}
       <div className='h-full overflow-y-auto px-6 pt-5 pb-4'>
         {/* Calorie Card */}
+        {loading && nutrition.calories === 0 ? (
+          <DashboardCalorieSkeleton />
+        ) : (
         <div className='bg-gradient-to-br from-[#1a1f35] to-[#0d1b3e] border border-blue-500/20 rounded-3xl p-5 mb-4'>
           <div className='flex items-center justify-between mb-4'>
             <div>
@@ -325,9 +348,7 @@ export default function DashboardPage() {
                 Today's Calories
               </div>
               <div className='text-[30px] font-extrabold text-white tracking-tight leading-none'>
-                {loading
-                  ? '...'
-                  : Math.round(nutrition.calories).toLocaleString()}
+                {Math.round(nutrition.calories).toLocaleString()}
               </div>
               <div className='text-[13px] text-gray-400'>
                 of {goals.calories.toLocaleString()} kcal
@@ -367,9 +388,19 @@ export default function DashboardPage() {
             />
           </div>
         </div>
+        )}
 
         {/* Activity Metrics - 2x2 Grid */}
         <div className='grid grid-cols-2 gap-3 mb-4'>
+          {loading && nutrition.calories === 0 ? (
+            <>
+              <DashboardMetricCardSkeleton />
+              <DashboardMetricCardSkeleton />
+              <DashboardMetricCardSkeleton />
+              <DashboardMetricCardSkeleton />
+            </>
+          ) : (
+            <>
           {/* Streak Card */}
           <div className='bg-[#131520] border border-white/5 rounded-2xl p-4'>
             <div className='flex items-center gap-2 mb-3'>
@@ -382,7 +413,7 @@ export default function DashboardPage() {
             </div>
             <div className='flex items-baseline gap-1'>
               <div className='text-[32px] font-extrabold text-white leading-none'>
-                {loading ? '...' : streak}
+                {streak}
               </div>
               <span className='text-[14px] text-gray-400 font-medium'>days</span>
             </div>
@@ -401,7 +432,7 @@ export default function DashboardPage() {
             </div>
             <div className='flex items-baseline gap-1'>
               <div className='text-[32px] font-extrabold text-white leading-none'>
-                {loading ? '...' : (waterIntake / 1000).toFixed(1)}
+                {(waterIntake / 1000).toFixed(1)}
               </div>
               <span className='text-[14px] text-gray-400 font-medium'>L</span>
             </div>
@@ -451,12 +482,14 @@ export default function DashboardPage() {
             </div>
             <div className='flex items-baseline gap-1'>
               <div className='text-[32px] font-extrabold text-white leading-none'>
-                {loading ? '...' : '0'}
+                0
               </div>
               <span className='text-[14px] text-gray-400 font-medium'>min</span>
             </div>
             <div className='mt-2 text-[12px] text-green-400'>⚡ Get moving</div>
           </div>
+            </>
+          )}
         </div>
 
         {/* Recent Activity */}
@@ -464,15 +497,17 @@ export default function DashboardPage() {
           <div className='text-[14px] font-bold text-white mb-3'>
             Recent Activity
           </div>
-          {loading && (
-            <div className='text-center py-8 text-gray-400'>Loading...</div>
-          )}
-          {!loading && recentActivity.length === 0 && (
+          {loading && nutrition.calories === 0 ? (
+            <>
+              <DashboardActivitySkeleton />
+              <DashboardActivitySkeleton />
+              <DashboardActivitySkeleton />
+            </>
+          ) : recentActivity.length === 0 ? (
             <div className='text-center py-8 text-gray-400'>
               No recent activity
             </div>
-          )}
-          {!loading &&
+          ) : (
             recentActivity.map((item, index) => {
               const icon = item.type === 'meal' ? 'utensils' : 'dumbbell'
               const color = item.type === 'meal' ? '#F59E0B' : '#818CF8'
@@ -506,7 +541,8 @@ export default function DashboardPage() {
                   </div>
                 </div>
               )
-            })}
+            })
+          )}
         </div>
       </div>
 

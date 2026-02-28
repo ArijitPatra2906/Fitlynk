@@ -3,21 +3,14 @@
 import { useState, useEffect } from 'react'
 import { Icon } from '@/components/ui/icon'
 import Link from 'next/link'
-
-interface UserData {
-  _id: string
-  email: string
-  name: string
-  avatar_url?: string
-  height?: number
-  weight_kg?: number
-  date_of_birth?: string
-  gender?: string
-  units: 'metric' | 'imperial'
-}
+import {
+  ProfileHeaderSkeleton,
+  ProfileSectionSkeleton,
+} from '@/components/ui/skeleton'
+import { User } from '@/types'
 
 export default function ProfilePage() {
-  const [userData, setUserData] = useState<UserData | null>(null)
+  const [userData, setUserData] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -94,8 +87,13 @@ export default function ProfilePage() {
 
   if (loading) {
     return (
-      <div className='min-h-screen flex items-center justify-center bg-[#0B0D17]'>
-        <div className='text-white'>Loading...</div>
+      <div>
+        <ProfileHeaderSkeleton />
+        <div className='px-6 pb-4'>
+          <ProfileSectionSkeleton />
+          <ProfileSectionSkeleton />
+          <ProfileSectionSkeleton />
+        </div>
       </div>
     )
   }

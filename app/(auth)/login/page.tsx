@@ -80,14 +80,15 @@ function LoginPageContent() {
       }
 
       // Store auth token
-      const { token } = response.data
+      const { token, needsOnboarding } = response.data
       console.log('[Login] Token received, saving...')
+      console.log('[Login] Needs onboarding:', needsOnboarding)
 
       const { saveAuthToken } = await import('@/lib/auth/auth-token')
       await saveAuthToken(token)
 
-      console.log('[Login] Login successful, redirecting to dashboard')
-      router.push('/dashboard')
+      console.log('[Login] Login successful, redirecting...')
+      router.push(needsOnboarding ? '/onboarding' : '/dashboard')
     } catch (err: any) {
       console.error('[Login] Error occurred:', err)
       setError(err.message || 'An error occurred. Please try again.')

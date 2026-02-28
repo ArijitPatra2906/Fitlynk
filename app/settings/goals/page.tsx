@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Icon } from '@/components/ui/icon'
 import Link from 'next/link'
+import { GoalsPageSkeleton } from '@/components/ui/skeleton'
 
 export default function GoalsPage() {
   const router = useRouter()
@@ -168,11 +169,7 @@ export default function GoalsPage() {
   }
 
   if (loading) {
-    return (
-      <div className='min-h-screen flex items-center justify-center bg-[#0B0D17]'>
-        <div className='text-white'>Loading...</div>
-      </div>
-    )
+    return <GoalsPageSkeleton />
   }
 
   return (

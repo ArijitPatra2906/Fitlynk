@@ -6,34 +6,18 @@ import { BarChart } from "@/components/ui/bar-chart";
 import Link from "next/link";
 import { getAuthToken } from "@/lib/auth/auth-token";
 import { apiClient } from "@/lib/api/client";
-
-interface Exercise {
-  _id: string;
-  name: string;
-}
-
-interface WorkoutTemplate {
-  _id: string;
-  name: string;
-  exercises: Array<{
-    exercise_id: Exercise | string;
-    order_index: number;
-    sets: Array<any>;
-  }>;
-  started_at: string;
-  is_template: boolean;
-  template_id?: string;
-}
-
-interface WeeklyVolumeData {
-  [date: string]: number;
-}
+import {
+  ExerciseQuickActionSkeleton,
+  ExerciseTemplateSkeleton,
+  ExerciseChartSkeleton,
+} from "@/components/ui/skeleton";
+import { Workout } from "@/types";
 
 const iconColors = ["#818CF8", "#10B981", "#F59E0B", "#EC4899", "#8B5CF6"];
 const iconNames = ["dumbbell", "repeat", "zap", "target", "activity"];
 
 export default function ExercisePage() {
-  const [templates, setTemplates] = useState<WorkoutTemplate[]>([]);
+  const [templates, setTemplates] = useState<Workout[]>([]);
   const [weeklyVolume, setWeeklyVolume] = useState<number[]>([0, 0, 0, 0, 0, 0, 0]);
   const [completedWorkouts, setCompletedWorkouts] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -114,7 +98,7 @@ export default function ExercisePage() {
     setWeeklyVolume(volumeByDay);
   };
 
-  const getExerciseNames = (template: WorkoutTemplate): string => {
+  const getExerciseNames = (template: Workout): string => {
     const exercises = template.exercises
       .slice(0, 3)
       .map((ex) => {
@@ -129,11 +113,11 @@ export default function ExercisePage() {
     return exercises || 'No exercises';
   };
 
-  const getTotalSets = (template: WorkoutTemplate): number => {
+  const getTotalSets = (template: Workout): number => {
     return template.exercises.reduce((total, ex) => total + (ex.sets?.length || 0), 0);
   };
 
-  const getLastDone = (template: WorkoutTemplate): string => {
+  const getLastDone = (template: Workout): string => {
     // Find completed workouts that match this template's ID
     const matchingWorkouts = completedWorkouts.filter(
       (workout) => workout.template_id === template._id && workout.ended_at
@@ -171,8 +155,16 @@ export default function ExercisePage() {
 
   if (loading) {
     return (
-      <div className="px-6 pt-5 pb-4 flex items-center justify-center min-h-[200px]">
-        <div className="text-gray-400">Loading...</div>
+      <div className="px-6 pt-5 pb-4">
+        <ExerciseQuickActionSkeleton />
+        <ExerciseQuickActionSkeleton />
+
+        <div className="text-[14px] font-bold text-white mb-3">My Templates</div>
+        <ExerciseTemplateSkeleton />
+        <ExerciseTemplateSkeleton />
+        <ExerciseTemplateSkeleton />
+
+        <ExerciseChartSkeleton />
       </div>
     );
   }

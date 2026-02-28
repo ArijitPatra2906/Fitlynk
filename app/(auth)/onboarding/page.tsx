@@ -14,7 +14,6 @@ export default function OnboardingPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [checkingAuth, setCheckingAuth] = useState(true)
   const [formData, setFormData] = useState({
     height: '',
     weight_kg: '',
@@ -22,28 +21,6 @@ export default function OnboardingPage() {
     gender: '',
     units: 'metric',
   })
-
-  useEffect(() => {
-    // Check if user is authenticated
-    const checkAuth = async () => {
-      try {
-        const { getAuthToken } = await import('@/lib/auth/auth-token')
-        const token = await getAuthToken()
-
-        if (!token) {
-          router.push('/login')
-          return
-        }
-      } catch (error) {
-        console.error('Auth check failed:', error)
-        router.push('/login')
-      } finally {
-        setCheckingAuth(false)
-      }
-    }
-
-    checkAuth()
-  }, [router])
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -99,14 +76,6 @@ export default function OnboardingPage() {
     } finally {
       setLoading(false)
     }
-  }
-
-  if (checkingAuth) {
-    return (
-      <div className='min-h-screen flex items-center justify-center bg-[#0B0D17]'>
-        <div className='text-white'>Loading...</div>
-      </div>
-    )
   }
 
   return (

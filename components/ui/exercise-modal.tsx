@@ -5,15 +5,7 @@ import { Icon } from "@/components/ui/icon";
 import { getAuthToken } from "@/lib/auth/auth-token";
 import { apiClient } from "@/lib/api/client";
 import { toast } from "sonner";
-
-interface Exercise {
-  _id: string;
-  name: string;
-  category: string;
-  muscle_groups: string[];
-  equipment?: string;
-  is_custom: boolean;
-}
+import { Exercise } from "@/types";
 
 interface ExerciseModalProps {
   isOpen: boolean;

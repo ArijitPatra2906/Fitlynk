@@ -30,11 +30,15 @@ const dashboardConfig: AppBarConfig = {
 const exerciseConfig: AppBarConfig = {
   title: 'Exercise',
   showBack: false,
+  showNotifications: true,
+  showAvatar: true,
 }
 
 const nutritionConfig: AppBarConfig = {
   title: 'Nutrition',
   showBack: false,
+  showNotifications: true,
+  showAvatar: true,
   actions: (
     <div className='flex gap-1.5 bg-[#131520] rounded-xl p-1 border border-white/5'>
       {['Today', 'Week'].map((label, i) => (
@@ -54,16 +58,22 @@ const nutritionConfig: AppBarConfig = {
 const progressConfig: AppBarConfig = {
   title: 'Progress',
   showBack: false,
+  showNotifications: true,
+  showAvatar: true,
 }
 
 const workoutConfig: AppBarConfig = {
   title: 'Push A',
   showBack: true,
+  showNotifications: true,
+  showAvatar: true,
 }
 
 const foodSearchConfig: AppBarConfig = {
   title: 'Add Food',
   showBack: true,
+  showNotifications: true,
+  showAvatar: true,
   actions: (
     <div className='w-[42px] h-[42px] rounded-2xl bg-blue-500/15 border border-blue-500/20 flex items-center justify-center flex-shrink-0'>
       <Icon name='camera' size={18} color='#3B82F6' />
@@ -73,8 +83,9 @@ const foodSearchConfig: AppBarConfig = {
 
 const settingsGoalsConfig: AppBarConfig = {
   title: 'Nutrition Goals',
-  subtitle: 'Set your daily targets',
   showBack: true,
+  showNotifications: true,
+  showAvatar: true,
 }
 
 const routeConfigs: Record<string, AppBarConfig> = {

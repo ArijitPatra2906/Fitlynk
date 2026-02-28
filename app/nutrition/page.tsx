@@ -8,21 +8,13 @@ import { FoodSearchModal } from "@/components/nutrition/food-search-modal";
 import { getAuthToken } from "@/lib/auth/auth-token";
 import { apiClient } from "@/lib/api/client";
 import { toast } from "sonner";
+import {
+  NutritionMacroSummarySkeleton,
+  NutritionMealCardSkeleton,
+} from "@/components/ui/skeleton";
+import { MealLogPopulated } from "@/types";
 
-interface MealItem {
-  _id: string;
-  food_id: {
-    _id: string;
-    name: string;
-    brand?: string;
-  };
-  serving_size: number;
-  serving_unit: string;
-  calories: number;
-  protein_g: number;
-  carbs_g: number;
-  fat_g: number;
-}
+type MealType = "breakfast" | "lunch" | "dinner" | "snack";
 
 interface DailyNutrition {
   calories: number;
@@ -38,8 +30,6 @@ interface Goals {
   fat: number;
 }
 
-type MealType = "breakfast" | "lunch" | "dinner" | "snack";
-
 const mealConfig = [
   { type: "breakfast", label: "Breakfast", color: "#F59E0B" },
   { type: "lunch", label: "Lunch", color: "#10B981" },
@@ -49,7 +39,7 @@ const mealConfig = [
 
 export default function NutritionPage() {
   const [loading, setLoading] = useState(true);
-  const [mealItems, setMealItems] = useState<{ [key in MealType]: MealItem[] }>({
+  const [mealItems, setMealItems] = useState<{ [key in MealType]: MealLogPopulated[] }>({
     breakfast: [],
     lunch: [],
     snack: [],
@@ -89,7 +79,7 @@ export default function NutritionPage() {
         const meals = mealsRes.data || [];
 
         // Group meals by type
-        const grouped: { [key in MealType]: MealItem[] } = {
+        const grouped: { [key in MealType]: MealLogPopulated[] } = {
           breakfast: [],
           lunch: [],
           snack: [],
@@ -188,7 +178,7 @@ export default function NutritionPage() {
     }
   };
 
-  const handleDeleteMealItem = async (itemId: string) => {
+  const handleDeleteMealLogPopulated = async (itemId: string) => {
     try {
       const token = await getAuthToken();
       if (!token) return;
@@ -211,8 +201,12 @@ export default function NutritionPage() {
 
   if (loading) {
     return (
-      <div className="px-6 pt-4 pb-4 flex items-center justify-center min-h-[200px]">
-        <div className="text-gray-400">Loading...</div>
+      <div className="px-6 pt-4 pb-4">
+        <NutritionMacroSummarySkeleton />
+        <NutritionMealCardSkeleton />
+        <NutritionMealCardSkeleton />
+        <NutritionMealCardSkeleton />
+        <NutritionMealCardSkeleton />
       </div>
     );
   }
@@ -295,7 +289,7 @@ export default function NutritionPage() {
                   </div>
                 </div>
                 <button
-                  onClick={() => handleDeleteMealItem(item._id)}
+                  onClick={() => handleDeleteMealLogPopulated(item._id)}
                   className="w-7 h-7 rounded-lg bg-red-500/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
                 >
                   <Icon name="trash" size={14} color="#EF4444" />

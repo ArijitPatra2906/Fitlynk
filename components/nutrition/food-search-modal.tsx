@@ -4,23 +4,7 @@ import { useState, useEffect } from "react";
 import { Icon } from "@/components/ui/icon";
 import { getAuthToken } from "@/lib/auth/auth-token";
 import { apiClient } from "@/lib/api/client";
-
-interface ServingSize {
-  unit: string;
-  grams: number;
-  label?: string;
-}
-
-interface Food {
-  _id: string;
-  name: string;
-  brand?: string;
-  calories_per_100g: number;
-  protein_per_100g: number;
-  carbs_per_100g: number;
-  fat_per_100g: number;
-  serving_sizes?: ServingSize[];
-}
+import { Food } from "@/types";
 
 interface FoodSearchModalProps {
   isOpen: boolean;
