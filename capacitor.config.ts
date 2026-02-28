@@ -4,7 +4,6 @@ const config: CapacitorConfig = {
   appId: 'com.fitlynk.app',
   appName: 'Fitlynk',
   webDir: 'out',
-
   plugins: {
     Camera: {
       permissions: ['camera', 'photos'],
