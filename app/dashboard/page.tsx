@@ -382,6 +382,12 @@ export default function DashboardPage() {
       console.log('[Dashboard] Checking if step tracker is supported...')
       console.log('[Dashboard] isSupported:', stepTracker.isSupported())
 
+      // Always hydrate from backend first (historical source of truth).
+      const savedSteps = await stepTracker.getTodayStepsFromBackend()
+      if (savedSteps > 0) {
+        setDailySteps(savedSteps)
+      }
+
       if (stepTracker.isSupported()) {
         try {
           console.log('[Dashboard] Requesting permissions...')
@@ -395,6 +401,7 @@ export default function DashboardPage() {
             const steps = await stepTracker.getTodaySteps()
             console.log('[Dashboard] Steps fetched:', steps)
             setDailySteps(steps)
+            await stepTracker.syncSteps(steps)
 
             console.log('[Dashboard] Starting real-time tracking...')
             // Start real-time tracking
@@ -420,6 +427,39 @@ export default function DashboardPage() {
     return () => {
       console.log('[Dashboard] Cleaning up step tracker...')
       stepTracker.stopTracking()
+    }
+  }, [])
+
+  useEffect(() => {
+    let appListener: { remove: () => Promise<void> } | null = null
+
+    const setupAppResumeSync = async () => {
+      if (!stepTracker.isSupported()) return
+
+      try {
+        const { App } = await import('@capacitor/app')
+        appListener = await App.addListener('appStateChange', async ({ isActive }) => {
+          if (!isActive) return
+
+          try {
+            const steps = await stepTracker.getTodaySteps()
+            setDailySteps(steps)
+            await stepTracker.syncSteps(steps)
+          } catch (error) {
+            console.error('[Dashboard] Error refreshing steps on resume:', error)
+          }
+        })
+      } catch (error) {
+        console.error('[Dashboard] Failed to set app resume listener:', error)
+      }
+    }
+
+    setupAppResumeSync()
+
+    return () => {
+      if (appListener) {
+        appListener.remove()
+      }
     }
   }, [])
 
@@ -739,7 +779,10 @@ export default function DashboardPage() {
         isOpen={stepModalOpen}
         onClose={() => setStepModalOpen(false)}
         currentSteps={dailySteps}
-        onSave={(steps) => setDailySteps(steps)}
+        onSave={async (steps) => {
+          setDailySteps(steps)
+          await stepTracker.syncSteps(steps)
+        }}
       />
     </div>
   )

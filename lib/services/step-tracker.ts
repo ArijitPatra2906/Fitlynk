@@ -11,6 +11,8 @@
 
 import { Capacitor } from "@capacitor/core";
 import { CapacitorPedometer } from "@capgo/capacitor-pedometer";
+import { getAuthToken } from "@/lib/auth/auth-token";
+import { apiClient } from "@/lib/api/client";
 
 export interface StepData {
   steps: number;
@@ -24,12 +26,45 @@ class StepTrackerService {
   private isNative: boolean;
   private platform: string;
   private pollingInterval: any = null;
-  private trackingStartTime: number = 0;
+  private lastReportedSteps: number = -1;
+  private lastSyncedSteps: number = -1;
 
   constructor() {
     this.isNative = Capacitor.isNativePlatform();
     this.platform = Capacitor.getPlatform();
     console.log('[StepTracker] Initialized - isNative:', this.isNative, 'platform:', this.platform);
+  }
+
+  private getStartOfTodayMs(): number {
+    const startDate = new Date();
+    startDate.setHours(0, 0, 0, 0);
+    return startDate.getTime();
+  }
+
+  private async ensurePermission(): Promise<void> {
+    if (!this.isSupported()) {
+      throw new Error("Step tracking not supported on this platform");
+    }
+
+    // On some Android builds, checkPermissions can be stale/incorrect.
+    // Force a runtime request/check path so plugin calls don't fail later.
+    if (this.platform === "android") {
+      const requestResult = await CapacitorPedometer.requestPermissions();
+      if (requestResult.activityRecognition !== "granted") {
+        throw new Error("Activity recognition permission not granted");
+      }
+      return;
+    }
+
+    const checkResult = await CapacitorPedometer.checkPermissions();
+    if (checkResult.activityRecognition === "granted") {
+      return;
+    }
+
+    const requestResult = await CapacitorPedometer.requestPermissions();
+    if (requestResult.activityRecognition !== "granted") {
+      throw new Error("Activity recognition permission not granted");
+    }
   }
 
   /**
@@ -77,6 +112,8 @@ class StepTrackerService {
     }
 
     try {
+      await this.ensurePermission();
+
       console.log('[StepTracker] Checking if pedometer is available...');
       const available = await CapacitorPedometer.isAvailable();
       console.log('[StepTracker] Pedometer available:', available);
@@ -88,21 +125,34 @@ class StepTrackerService {
 
       console.log('[StepTracker] Getting today\'s steps...');
 
-      // Get start of today
-      const startDate = new Date();
-      startDate.setHours(0, 0, 0, 0);
+      const startOfToday = this.getStartOfTodayMs();
 
       console.log('[StepTracker] Query range:', {
-        start: startDate.getTime(),
+        start: startOfToday,
         end: Date.now(),
-        startFormatted: startDate.toISOString(),
+        startFormatted: new Date(startOfToday).toISOString(),
         endFormatted: new Date().toISOString()
       });
 
-      const result = await CapacitorPedometer.getMeasurement({
-        start: startDate.getTime(),
-        end: Date.now(),
-      });
+      let result;
+      try {
+        result = await CapacitorPedometer.getMeasurement({
+          start: startOfToday,
+          end: Date.now(),
+        });
+      } catch (error: any) {
+        // Retry once after forcing permission refresh for Android edge cases.
+        const message = String(error?.message || error || "");
+        if (this.platform === "android" && message.toLowerCase().includes("permission")) {
+          await this.ensurePermission();
+          result = await CapacitorPedometer.getMeasurement({
+            start: startOfToday,
+            end: Date.now(),
+          });
+        } else {
+          throw error;
+        }
+      }
 
       console.log('[StepTracker] Steps result:', result);
 
@@ -110,7 +160,7 @@ class StepTrackerService {
     } catch (error) {
       console.error("[StepTracker] Error getting step count:", error);
       console.error("[StepTracker] Error details:", JSON.stringify(error));
-      return 0;
+      throw error;
     }
   }
 
@@ -126,22 +176,23 @@ class StepTrackerService {
     try {
       console.log('[StepTracker] Starting real-time tracking...');
 
-      // Check permissions again before starting
-      const checkResult = await CapacitorPedometer.checkPermissions();
-      console.log('[StepTracker] Permission check before tracking:', checkResult);
+      await this.ensurePermission();
 
-      if (checkResult.activityRecognition !== 'granted') {
-        console.error('[StepTracker] Permission not granted for tracking');
-        return;
-      }
-
-      // Store the start time for tracking
-      this.trackingStartTime = Date.now();
+      // Emit initial value first so UI is immediately accurate
+      const initialSteps = await this.getTodaySteps();
+      this.lastReportedSteps = initialSteps;
+      callback(initialSteps);
+      await this.syncSteps(initialSteps);
 
       // Listen for measurement updates BEFORE starting
-      await CapacitorPedometer.addListener('measurement', (data) => {
+      await CapacitorPedometer.addListener('measurement', async (data) => {
         console.log('[StepTracker] Measurement update received:', data);
-        callback(data.numberOfSteps || 0);
+        const steps = await this.getTodaySteps();
+        if (steps !== this.lastReportedSteps) {
+          this.lastReportedSteps = steps;
+          callback(steps);
+        }
+        await this.syncSteps(steps);
       });
 
       await CapacitorPedometer.startMeasurementUpdates();
@@ -153,18 +204,16 @@ class StepTrackerService {
       this.pollingInterval = setInterval(async () => {
         try {
           console.log('[StepTracker] Polling for steps...');
-          const result = await CapacitorPedometer.getMeasurement({
-            start: this.trackingStartTime,
-            end: Date.now(),
-          });
-          console.log('[StepTracker] Polled result:', result);
-          if (result.numberOfSteps !== undefined) {
-            callback(result.numberOfSteps);
+          const steps = await this.getTodaySteps();
+          if (steps !== this.lastReportedSteps) {
+            this.lastReportedSteps = steps;
+            callback(steps);
           }
+          await this.syncSteps(steps);
         } catch (error) {
           console.error('[StepTracker] Error during polling:', error);
         }
-      }, 5000); // Poll every 5 seconds
+      }, 15000); // Poll every 15 seconds to balance battery and freshness
 
     } catch (error) {
       console.error("[StepTracker] Error starting step tracking:", error);
@@ -217,6 +266,8 @@ class StepTrackerService {
    * Sync steps with backend
    */
   async syncSteps(steps: number): Promise<void> {
+    if (steps < 0 || steps === this.lastSyncedSteps) return;
+
     const stepData: StepData = {
       steps,
       date: new Date(),
@@ -225,8 +276,37 @@ class StepTrackerService {
       calories_burned: this.estimateCalories(steps),
     };
 
-    // TODO: Save to MongoDB via API route
-    console.log("Step data to sync:", stepData);
+    try {
+      const token = await getAuthToken();
+      if (!token) return;
+
+      await apiClient.post("/api/metrics/steps", stepData, token);
+      this.lastSyncedSteps = steps;
+      console.log("[StepTracker] Step data synced:", stepData);
+    } catch (error) {
+      console.error("[StepTracker] Error syncing steps:", error);
+    }
+  }
+
+  /**
+   * Get today's saved step count from backend (MongoDB)
+   */
+  async getTodayStepsFromBackend(): Promise<number> {
+    try {
+      const token = await getAuthToken();
+      if (!token) return 0;
+
+      const today = new Date().toISOString().split("T")[0];
+      const res = await apiClient.get(`/api/metrics/steps?date=${today}`, token);
+      if (!res.success) return 0;
+
+      const logs = Array.isArray(res.data) ? res.data : [];
+      if (logs.length === 0) return 0;
+      return logs[0]?.steps || 0;
+    } catch (error) {
+      console.error("[StepTracker] Error fetching steps from backend:", error);
+      return 0;
+    }
   }
 }
 
