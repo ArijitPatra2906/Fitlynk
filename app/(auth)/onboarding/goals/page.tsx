@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Icon } from '@/components/ui/icon'
+import { Skeleton } from '@/components/ui/skeleton'
 
 export default function GoalsOnboardingPage() {
   const router = useRouter()
@@ -208,7 +209,7 @@ export default function GoalsOnboardingPage() {
     switch (step) {
       case 'goal':
         return (
-          <div className='space-y-6 flex-1 flex flex-col justify-center'>
+          <div className='space-y-6'>
             <div className='text-center'>
               <h1 className='text-[28px] font-extrabold text-white tracking-tight mb-2'>
                 What's your goal?
@@ -283,7 +284,7 @@ export default function GoalsOnboardingPage() {
 
       case 'calories':
         return (
-          <div className='space-y-6 flex-1 flex flex-col'>
+          <div className='space-y-6'>
             <div className='text-center'>
               <h1 className='text-[28px] font-extrabold text-white tracking-tight mb-2'>
                 Daily Calorie Goal
@@ -379,18 +380,46 @@ export default function GoalsOnboardingPage() {
 
   if (loading) {
     return (
-      <div className='min-h-screen bg-[#0B0D17] flex items-center justify-center'>
-        <div className='text-center'>
-          <div className='w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin mx-auto mb-4' />
-          <p className='text-gray-400 text-sm'>Calculating your personalized goals...</p>
+      <div className='h-screen bg-[#0B0D17] overflow-y-auto px-6 py-8 pt-16'>
+        <div className='w-full max-w-md mx-auto'>
+          {/* Progress Indicator Skeleton */}
+          <div className='flex items-center justify-center gap-2 mb-8'>
+            <Skeleton className='h-1.5 w-8 rounded-full' />
+            <Skeleton className='h-1.5 w-6 rounded-full' />
+          </div>
+
+          {/* Title Skeleton */}
+          <div className='text-center mb-6'>
+            <Skeleton className='h-9 w-64 mx-auto mb-2' />
+            <Skeleton className='h-5 w-80 mx-auto' />
+          </div>
+
+          {/* Goal Cards Skeleton */}
+          <div className='space-y-3'>
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className='w-full p-5 rounded-2xl border-2 border-white/10 bg-[#131520]'
+              >
+                <div className='flex items-center gap-4'>
+                  <Skeleton className='w-14 h-14 rounded-2xl' />
+                  <div className='flex-1'>
+                    <Skeleton className='h-5 w-32 mb-2' />
+                    <Skeleton className='h-4 w-48' />
+                  </div>
+                  <Skeleton className='w-5 h-5 rounded' />
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     )
   }
 
   return (
-    <div className='min-h-screen bg-[#0B0D17] flex flex-col px-6 py-8 pt-16'>
-      <div className='w-full max-w-md mx-auto flex-1 flex flex-col'>
+    <div className='h-screen bg-[#0B0D17] overflow-y-auto px-6 py-8 pt-16 pb-safe'>
+      <div className='w-full max-w-md mx-auto'>
         {/* Progress Indicator */}
         <div className='flex items-center justify-center gap-2 mb-8'>
           {['goal', 'calories'].map((s, i) => (

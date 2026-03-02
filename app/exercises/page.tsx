@@ -1,0 +1,270 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { getAuthToken } from '@/lib/auth/auth-token'
+import { apiClient } from '@/lib/api/client'
+import { toast } from 'sonner'
+import { ItemCard } from '@/components/common/item-card'
+import { Skeleton } from '@/components/ui/skeleton'
+import { Exercise } from '@/types'
+import { ExerciseEditDialog } from '@/components/exercise/exercise-edit-dialog'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { FilterBar } from '@/components/common/filter-bar'
+import { Pagination } from '@/components/ui/pagination'
+import { ExerciseModal } from '@/components/ui/exercise-modal'
+
+export default function ExercisesPage() {
+  const [exercises, setExercises] = useState<Exercise[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showEditDialog, setShowEditDialog] = useState(false)
+  const [editingExercise, setEditingExercise] = useState<Exercise | null>(null)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+  const [deletingExerciseId, setDeletingExerciseId] = useState<string | null>(
+    null,
+  )
+  const [showCreateModal, setShowCreateModal] = useState(false)
+
+  // Filter and pagination state
+  const [search, setSearch] = useState('')
+  const [category, setCategory] = useState('all')
+  const [muscleGroup, setMuscleGroup] = useState('all')
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(1)
+  const [total, setTotal] = useState(0)
+
+  useEffect(() => {
+    fetchExercises()
+  }, [search, category, muscleGroup, currentPage])
+
+  const fetchExercises = async () => {
+    try {
+      setLoading(true)
+      const token = await getAuthToken()
+      if (!token) return
+
+      const params = new URLSearchParams({
+        page: currentPage.toString(),
+        limit: '10',
+      })
+
+      if (search) params.append('search', search)
+      if (category !== 'all') params.append('category', category)
+      if (muscleGroup !== 'all') params.append('muscle_group', muscleGroup)
+
+      const res = await apiClient.get(
+        `/api/exercises?${params.toString()}`,
+        token,
+      )
+      if (res.success && res.data) {
+        setExercises(res.data.exercises || res.data)
+        if (res.data.pagination) {
+          setTotalPages(res.data.pagination.totalPages)
+          setTotal(res.data.pagination.total)
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching exercises:', err)
+      toast.error('Failed to load exercises')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleExerciseCreated = (newExercise: Exercise) => {
+    setExercises([newExercise, ...exercises])
+    setTotal(total + 1)
+  }
+
+  const handleEdit = (id: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const exercise = exercises.find((ex) => ex._id === id)
+    if (!exercise?.is_custom) {
+      toast.error('Cannot edit system exercises')
+      return
+    }
+    if (exercise) {
+      setEditingExercise(exercise)
+      setShowEditDialog(true)
+    }
+  }
+
+  const handleDelete = (id: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    const exercise = exercises.find((ex) => ex._id === id)
+    if (!exercise?.is_custom) {
+      toast.error('Cannot delete system exercises')
+      return
+    }
+
+    setDeletingExerciseId(id)
+    setShowDeleteDialog(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!deletingExerciseId) return
+
+    try {
+      const token = await getAuthToken()
+      if (!token) return
+
+      const res = await apiClient.delete(
+        `/api/exercises/${deletingExerciseId}`,
+        token,
+      )
+      if (res.success) {
+        setExercises(exercises.filter((e) => e._id !== deletingExerciseId))
+        toast.success('Exercise deleted successfully')
+      } else {
+        toast.error('Failed to delete exercise')
+      }
+    } catch (err) {
+      console.error('Error deleting exercise:', err)
+      toast.error('Failed to delete exercise')
+    } finally {
+      setDeletingExerciseId(null)
+    }
+  }
+
+  const handleUpdateExercise = (updatedExercise: Exercise) => {
+    setExercises(
+      exercises.map((e) =>
+        e._id === updatedExercise._id ? updatedExercise : e,
+      ),
+    )
+  }
+
+  return (
+    <>
+      <FilterBar
+        searchValue={search}
+        onSearchChange={setSearch}
+        placeholder='Search exercises...'
+        onAddClick={() => setShowCreateModal(true)}
+        addButtonText='New'
+        filters={[
+          {
+            label: 'Category',
+            type: 'dropdown',
+            value: category,
+            onChange: (val) => {
+              setCategory(val)
+              setCurrentPage(1)
+            },
+            options: [
+              { label: 'All', value: 'all' },
+              { label: 'Strength', value: 'strength' },
+              { label: 'Cardio', value: 'cardio' },
+            ],
+          },
+          {
+            label: 'Muscle Group',
+            type: 'tabs',
+            value: muscleGroup,
+            onChange: (val) => {
+              setMuscleGroup(val)
+              setCurrentPage(1)
+            },
+            options: [
+              { label: 'All', value: 'all' },
+              { label: 'Chest', value: 'chest' },
+              { label: 'Back', value: 'back' },
+              { label: 'Shoulders', value: 'shoulders' },
+              { label: 'Biceps', value: 'biceps' },
+              { label: 'Triceps', value: 'triceps' },
+              { label: 'Legs', value: 'legs' },
+              { label: 'Core', value: 'core' },
+            ],
+          },
+        ]}
+      />
+
+      {loading && (
+        <div className='px-6 pt-5 pb-4'>
+          {[...Array(10)].map((_, i) => (
+            <div
+              key={i}
+              className='flex items-center gap-3.5 p-4 bg-[#131520] border border-white/5 rounded-2xl mb-2.5'
+            >
+              <Skeleton className='w-10 h-10 rounded-xl' />
+              <div className='flex-1'>
+                <Skeleton className='h-4 w-32 mb-2' />
+                <Skeleton className='h-3 w-40' />
+              </div>
+              <div className='flex gap-1.5'>
+                <Skeleton className='w-8 h-8 rounded-lg' />
+                <Skeleton className='w-8 h-8 rounded-lg' />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className='px-6 pb-4'>
+        {exercises.length === 0 && !loading ? (
+          <div className='bg-[#131520] border border-white/5 rounded-2xl p-6 text-center'>
+            <div className='text-gray-400 text-sm mb-2'>No exercises found</div>
+            <div className='text-gray-500 text-xs'>
+              Try adjusting your filters or create a new exercise
+            </div>
+          </div>
+        ) : (
+          exercises.map((exercise) => (
+            <ItemCard
+              key={exercise._id}
+              id={exercise._id}
+              title={exercise.name}
+              subtitle={exercise.muscle_groups.join(', ')}
+              icon={exercise.category === 'cardio' ? 'activity' : 'dumbbell'}
+              iconColor='#818CF8'
+              iconBg='rgba(129, 140, 248, 0.1)'
+              href='#'
+              onEdit={handleEdit}
+              onDelete={handleDelete}
+              badge={exercise.is_custom ? 'Custom' : undefined}
+            />
+          ))
+        )}
+
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={setCurrentPage}
+        />
+      </div>
+
+      <ExerciseEditDialog
+        isOpen={showEditDialog}
+        onClose={() => {
+          setShowEditDialog(false)
+          setEditingExercise(null)
+        }}
+        exercise={editingExercise}
+        onUpdate={handleUpdateExercise}
+      />
+
+      <ConfirmDialog
+        isOpen={showDeleteDialog}
+        onClose={() => {
+          setShowDeleteDialog(false)
+          setDeletingExerciseId(null)
+        }}
+        onConfirm={confirmDelete}
+        title='Delete Exercise'
+        message='Are you sure you want to delete this exercise? This action cannot be undone.'
+        confirmText='Delete'
+        cancelText='Cancel'
+        type='danger'
+      />
+
+      <ExerciseModal
+        isOpen={showCreateModal}
+        isOpenCreate={true}
+        onClose={() => setShowCreateModal(false)}
+        onSelectExercise={handleExerciseCreated}
+      />
+    </>
+  )
+}

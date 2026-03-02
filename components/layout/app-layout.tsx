@@ -41,6 +41,9 @@ export function AppLayout({ children }: AppLayoutProps) {
     '/workout',
     '/food-search',
     '/settings/goals',
+    '/workouts',
+    '/templates',
+    '/exercises',
   ]
 
   // Check if current page should show bottom nav

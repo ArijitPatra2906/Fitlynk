@@ -256,6 +256,64 @@ export function ProfileSectionSkeleton() {
   )
 }
 
+// Workout-specific skeleton components
+export function WorkoutPageSkeleton() {
+  return (
+    <div className='h-full flex flex-col bg-[#0B0D17]'>
+      {/* Header */}
+      <div className='flex-shrink-0 px-6 pt-safe pb-3 flex items-center justify-between border-b border-white/5'>
+        <div className='flex items-center gap-3 flex-1'>
+          <Skeleton className='w-10 h-10 rounded-xl' />
+          <div className='flex-1'>
+            <Skeleton className='h-5 w-32 mb-1' />
+            <Skeleton className='h-3 w-24' />
+          </div>
+        </div>
+        <div className='flex gap-2'>
+          <Skeleton className='w-10 h-10 rounded-xl' />
+          <Skeleton className='w-10 h-10 rounded-xl' />
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className='flex-1 overflow-y-auto px-6 py-4'>
+        {/* Exercise blocks */}
+        {[...Array(2)].map((_, i) => (
+          <div key={i} className='bg-[#131520] border border-white/5 rounded-[22px] p-4 mb-3'>
+            <div className='flex items-center justify-between mb-3'>
+              <Skeleton className='h-5 w-40' />
+              <Skeleton className='w-8 h-8 rounded-lg' />
+            </div>
+
+            {/* Sets */}
+            <div className='space-y-2'>
+              {[...Array(3)].map((_, j) => (
+                <div key={j} className='flex gap-2'>
+                  <Skeleton className='h-10 w-12 rounded-xl' />
+                  <Skeleton className='h-10 flex-1 rounded-xl' />
+                  <Skeleton className='h-10 flex-1 rounded-xl' />
+                  <Skeleton className='w-10 h-10 rounded-xl' />
+                </div>
+              ))}
+            </div>
+
+            <Skeleton className='h-9 w-full rounded-xl mt-3' />
+          </div>
+        ))}
+
+        {/* Add Exercise Button */}
+        <Skeleton className='h-12 w-full rounded-xl' />
+      </div>
+
+      {/* Bottom Actions */}
+      <div className='flex-shrink-0 px-6 py-4 border-t border-white/5 flex gap-3'>
+        <Skeleton className='h-12 flex-1 rounded-xl' />
+        <Skeleton className='h-12 flex-1 rounded-xl' />
+      </div>
+    </div>
+  )
+}
+
 // Settings/Goals-specific skeleton components
 export function GoalsPageSkeleton() {
   return (

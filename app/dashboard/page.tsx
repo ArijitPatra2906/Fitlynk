@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { Icon } from '@/components/ui/icon'
+import { BarChart } from '@/components/ui/bar-chart'
 import { ProgressRing } from '@/components/ui/progress-ring'
 import { MacroPill } from '@/components/ui/macro-pill'
 import { StepModal } from '@/components/dashboard/step-modal'
@@ -11,6 +12,7 @@ import {
   DashboardMetricCardSkeleton,
   DashboardActivitySkeleton,
 } from '@/components/ui/skeleton'
+import { ItemCard } from '@/components/common/item-card'
 import { stepTracker } from '@/lib/services/step-tracker'
 import Link from 'next/link'
 
@@ -36,6 +38,35 @@ interface RecentActivity {
   timestamp: string
 }
 
+const normalizeList = (payload: any) => {
+  if (Array.isArray(payload)) return payload
+  if (Array.isArray(payload?.meals)) return payload.meals
+  if (Array.isArray(payload?.workouts)) return payload.workouts
+  return []
+}
+
+const getMealTotals = (meal: any) => {
+  if (Array.isArray(meal?.items)) {
+    return meal.items.reduce(
+      (acc: DailyNutrition, item: any) => {
+        acc.calories += item.calories || 0
+        acc.protein += item.protein_g || 0
+        acc.carbs += item.carbs_g || 0
+        acc.fat += item.fat_g || 0
+        return acc
+      },
+      { calories: 0, protein: 0, carbs: 0, fat: 0 },
+    )
+  }
+
+  return {
+    calories: meal?.calories || 0,
+    protein: meal?.protein_g || 0,
+    carbs: meal?.carbs_g || 0,
+    fat: meal?.fat_g || 0,
+  }
+}
+
 export default function DashboardPage() {
   const router = useRouter()
   const [fabOpen, setFabOpen] = useState(false)
@@ -58,6 +89,9 @@ export default function DashboardPage() {
   })
   const [waterIntake, setWaterIntake] = useState(0)
   const [streak, setStreak] = useState(0)
+  const [weeklyVolume, setWeeklyVolume] = useState<number[]>([
+    0, 0, 0, 0, 0, 0, 0,
+  ])
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -85,7 +119,9 @@ export default function DashboardPage() {
           const user = userRes.data
           // Check if onboarding is incomplete
           if (!user.onboarding_completed) {
-            console.log('[Dashboard] User onboarding incomplete, redirecting to onboarding')
+            console.log(
+              '[Dashboard] User onboarding incomplete, redirecting to onboarding',
+            )
             router.push('/onboarding')
             return
           }
@@ -97,17 +133,15 @@ export default function DashboardPage() {
           token,
         )
         if (mealsRes.success) {
-          const meals = mealsRes.data || []
-
+          const meals = normalizeList(mealsRes.data)
           // Calculate daily totals
           const dailyNutrition = meals.reduce(
             (acc: DailyNutrition, meal: any) => {
-              meal.items.forEach((item: any) => {
-                acc.calories += item.calories || 0
-                acc.protein += item.protein_g || 0
-                acc.carbs += item.carbs_g || 0
-                acc.fat += item.fat_g || 0
-              })
+              const totals = getMealTotals(meal)
+              acc.calories += totals.calories
+              acc.protein += totals.protein
+              acc.carbs += totals.carbs
+              acc.fat += totals.fat
               return acc
             },
             { calories: 0, protein: 0, carbs: 0, fat: 0 },
@@ -142,13 +176,17 @@ export default function DashboardPage() {
         }
 
         // Fetch recent workouts for streak calculation
-        const workoutsRes = await apiClient.get('/api/workouts?limit=30', token)
+        const workoutsRes = await apiClient.get(
+          '/api/workouts?limit=30&is_template=false',
+          token,
+        )
         if (workoutsRes.success) {
-          const workouts = workoutsRes.data?.workouts || []
+          const workouts = normalizeList(workoutsRes.data)
 
           // Calculate streak (consecutive days with workouts)
           const calculatedStreak = calculateStreak(workouts)
           setStreak(calculatedStreak)
+          calculateWeeklyVolume(workouts)
         }
 
         // Fetch recent activity (last 3 meals + workouts)
@@ -157,74 +195,66 @@ export default function DashboardPage() {
           token,
         )
         const recentWorkoutsRes = await apiClient.get(
-          `/api/workouts?limit=5&is_template=false`,
+          `/api/workouts?limit=5&is_template=false&completed=true`,
           token,
         )
 
         const activities: RecentActivity[] = []
 
         if (recentMealsRes.success) {
-          const meals = recentMealsRes.data || []
+          const meals = normalizeList(recentMealsRes.data)
           meals.forEach((meal: any) => {
-            const totalCal =
-              meal.items?.reduce(
-                (sum: number, item: any) => sum + (item.calories || 0),
-                0,
-              ) ||
-              meal.calories ||
-              0
+            const totals = getMealTotals(meal)
+            const totalCal = totals.calories
             const itemNames =
-              meal.items
-                ?.slice(0, 2)
-                .map((item: any) => item.food_name)
-                .join(', ') || 'Meal'
+              meal.items?.length > 0
+                ? meal.items
+                    .slice(0, 2)
+                    .map((item: any) => item.food_name)
+                    .join(', ')
+                : meal.food_name ||
+                  meal.food_id?.name ||
+                  meal.meal_type ||
+                  'Meal'
             activities.push({
               type: 'meal',
-              name:
-                meal.meal_type.charAt(0).toUpperCase() +
-                meal.meal_type.slice(1),
+              name: meal.meal_type
+                ? meal.meal_type.charAt(0).toUpperCase() +
+                  meal.meal_type.slice(1)
+                : 'Meal',
               description: itemNames,
               calories: totalCal,
-              timestamp: meal.date,
+              timestamp: meal.created_at || meal.updated_at || meal.date,
             })
           })
         }
 
         if (recentWorkoutsRes.success) {
-          const workouts = recentWorkoutsRes.data?.workouts || []
+          const workouts = normalizeList(recentWorkoutsRes.data)
           workouts.forEach((workout: any) => {
             const exerciseNames = workout.exercises
               .slice(0, 3)
               .map((e: any) => e.exercise_id?.name || 'Exercise')
               .join(' · ')
-            const totalVolume = workout.exercises.reduce(
-              (sum: number, e: any) => {
-                return (
-                  sum +
-                  e.sets.reduce(
-                    (s: number, set: any) =>
-                      s + (set.weight_kg || 0) * (set.reps || 0),
-                    0,
-                  )
-                )
-              },
-              0,
-            )
             activities.push({
               type: 'workout',
               name: workout.name,
               description: exerciseNames,
-              calories: Math.round(totalVolume * 0.05), // Rough estimate
-              timestamp: workout.ended_at,
+              calories: workout.calories || 0,
+              timestamp:
+                workout.ended_at || workout.updated_at || workout.started_at,
             })
           })
         }
 
-        // Sort by timestamp and take latest 3
-        activities.sort(
-          (a, b) =>
-            new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
-        )
+        // Sort strictly by event time and take latest 3.
+        activities.sort((a, b) => {
+          const aTime = new Date(a.timestamp).getTime()
+          const bTime = new Date(b.timestamp).getTime()
+          const safeATime = Number.isFinite(aTime) ? aTime : 0
+          const safeBTime = Number.isFinite(bTime) ? bTime : 0
+          return safeBTime - safeATime
+        })
         setRecentActivity(activities.slice(0, 3))
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
@@ -238,33 +268,93 @@ export default function DashboardPage() {
 
   // Calculate workout streak
   const calculateStreak = (workouts: any[]) => {
-    if (workouts.length === 0) return 0
+    if (!Array.isArray(workouts) || workouts.length === 0) return 0
 
-    // Sort by date descending
-    const sorted = [...workouts].sort(
-      (a, b) => new Date(b.date).getTime() - new Date(a.date).getTime(),
-    )
+    const dayKey = (date: Date) => {
+      const d = new Date(date)
+      d.setHours(0, 0, 0, 0)
+      const y = d.getFullYear()
+      const m = String(d.getMonth() + 1).padStart(2, '0')
+      const day = String(d.getDate()).padStart(2, '0')
+      return `${y}-${m}-${day}`
+    }
+
+    // Build a set of unique workout days using ended_at (preferred) or started_at.
+    const workoutDays = new Set<string>()
+    workouts.forEach((workout: any) => {
+      const rawDate = workout.ended_at || workout.started_at
+      if (!rawDate) return
+      const dt = new Date(rawDate)
+      if (!Number.isFinite(dt.getTime())) return
+      workoutDays.add(dayKey(dt))
+    })
+
+    if (workoutDays.size === 0) return 0
+
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    const yesterday = new Date(today)
+    yesterday.setDate(yesterday.getDate() - 1)
+
+    // If no workout today, allow streak to continue from yesterday.
+    let cursor = today
+    if (!workoutDays.has(dayKey(today))) {
+      if (!workoutDays.has(dayKey(yesterday))) return 0
+      cursor = yesterday
+    }
 
     let streak = 0
-    let currentDate = new Date()
-    currentDate.setHours(0, 0, 0, 0)
-
-    for (const workout of sorted) {
-      const workoutDate = new Date(workout.date)
-      workoutDate.setHours(0, 0, 0, 0)
-
-      const daysDiff = Math.floor(
-        (currentDate.getTime() - workoutDate.getTime()) / (1000 * 60 * 60 * 24),
-      )
-
-      if (daysDiff === streak) {
-        streak++
-      } else if (daysDiff > streak) {
-        break
-      }
+    while (workoutDays.has(dayKey(cursor))) {
+      streak++
+      cursor = new Date(cursor)
+      cursor.setDate(cursor.getDate() - 1)
     }
 
     return streak
+  }
+
+  const calculateWeeklyVolume = (workouts: any[]) => {
+    // [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
+    const volumeByDay: number[] = [0, 0, 0, 0, 0, 0, 0]
+    const today = new Date()
+    const currentDayOfWeek = today.getDay() // 0=Sun ... 6=Sat
+
+    const startOfWeek = new Date(today)
+    const daysSinceMonday = currentDayOfWeek === 0 ? 6 : currentDayOfWeek - 1
+    startOfWeek.setDate(today.getDate() - daysSinceMonday)
+    startOfWeek.setHours(0, 0, 0, 0)
+
+    workouts.forEach((workout: any) => {
+      if (!workout.started_at || !workout.exercises) return
+
+      const workoutDate = new Date(workout.started_at)
+      workoutDate.setHours(0, 0, 0, 0)
+
+      const daysSinceWeekStart = Math.floor(
+        (workoutDate.getTime() - startOfWeek.getTime()) / (1000 * 60 * 60 * 24),
+      )
+
+      if (daysSinceWeekStart >= 0 && daysSinceWeekStart < 7) {
+        let totalVolume = 0
+
+        workout.exercises.forEach((ex: any) => {
+          ex.sets?.forEach((set: any) => {
+            if (
+              set.weight_kg &&
+              set.reps &&
+              !set.is_warmup &&
+              set.completed_at
+            ) {
+              totalVolume += set.weight_kg * set.reps
+            }
+          })
+        })
+
+        volumeByDay[daysSinceWeekStart] += totalVolume
+      }
+    })
+
+    setWeeklyVolume(volumeByDay)
   }
 
   // Format time ago
@@ -341,53 +431,53 @@ export default function DashboardPage() {
         {loading && nutrition.calories === 0 ? (
           <DashboardCalorieSkeleton />
         ) : (
-        <div className='bg-gradient-to-br from-[#1a1f35] to-[#0d1b3e] border border-blue-500/20 rounded-3xl p-5 mb-4'>
-          <div className='flex items-center justify-between mb-4'>
-            <div>
-              <div className='text-[11px] text-gray-400 uppercase tracking-wider mb-1'>
-                Today's Calories
+          <div className='bg-gradient-to-br from-[#1a1f35] to-[#0d1b3e] border border-blue-500/20 rounded-3xl p-5 mb-4'>
+            <div className='flex items-center justify-between mb-4'>
+              <div>
+                <div className='text-[11px] text-gray-400 uppercase tracking-wider mb-1'>
+                  Today's Calories
+                </div>
+                <div className='text-[30px] font-extrabold text-white tracking-tight leading-none'>
+                  {Math.round(nutrition.calories).toLocaleString()}
+                </div>
+                <div className='text-[13px] text-gray-400'>
+                  of {goals.calories.toLocaleString()} kcal
+                </div>
               </div>
-              <div className='text-[30px] font-extrabold text-white tracking-tight leading-none'>
-                {Math.round(nutrition.calories).toLocaleString()}
-              </div>
-              <div className='text-[13px] text-gray-400'>
-                of {goals.calories.toLocaleString()} kcal
-              </div>
+              <ProgressRing
+                percent={
+                  goals.calories > 0
+                    ? Math.round((nutrition.calories / goals.calories) * 100)
+                    : 0
+                }
+                size={88}
+                stroke={7}
+                color='#3B82F6'
+                label={`${goals.calories > 0 ? Math.round((nutrition.calories / goals.calories) * 100) : 0}%`}
+                sublabel='kcal'
+              />
             </div>
-            <ProgressRing
-              percent={
-                goals.calories > 0
-                  ? Math.round((nutrition.calories / goals.calories) * 100)
-                  : 0
-              }
-              size={88}
-              stroke={7}
-              color='#3B82F6'
-              label={`${goals.calories > 0 ? Math.round((nutrition.calories / goals.calories) * 100) : 0}%`}
-              sublabel='kcal'
-            />
+            <div className='flex gap-4'>
+              <MacroPill
+                label='Protein'
+                current={Math.round(nutrition.protein)}
+                target={goals.protein}
+                color='#10B981'
+              />
+              <MacroPill
+                label='Carbs'
+                current={Math.round(nutrition.carbs)}
+                target={goals.carbs}
+                color='#F59E0B'
+              />
+              <MacroPill
+                label='Fat'
+                current={Math.round(nutrition.fat)}
+                target={goals.fat}
+                color='#EF4444'
+              />
+            </div>
           </div>
-          <div className='flex gap-4'>
-            <MacroPill
-              label='Protein'
-              current={Math.round(nutrition.protein)}
-              target={goals.protein}
-              color='#10B981'
-            />
-            <MacroPill
-              label='Carbs'
-              current={Math.round(nutrition.carbs)}
-              target={goals.carbs}
-              color='#F59E0B'
-            />
-            <MacroPill
-              label='Fat'
-              current={Math.round(nutrition.fat)}
-              target={goals.fat}
-              color='#EF4444'
-            />
-          </div>
-        </div>
         )}
 
         {/* Activity Metrics - 2x2 Grid */}
@@ -401,95 +491,123 @@ export default function DashboardPage() {
             </>
           ) : (
             <>
-          {/* Streak Card */}
-          <div className='bg-[#131520] border border-white/5 rounded-2xl p-4'>
-            <div className='flex items-center gap-2 mb-3'>
-              <div className='w-[34px] h-[34px] rounded-xl bg-red-500/15 flex items-center justify-center'>
-                <Icon name='fire' size={18} color='#EF4444' />
+              {/* Streak Card */}
+              <div className='bg-[#131520] border border-white/5 rounded-2xl p-4'>
+                <div className='flex items-center gap-2 mb-3'>
+                  <div className='w-[34px] h-[34px] rounded-xl bg-red-500/15 flex items-center justify-center'>
+                    <Icon name='fire' size={18} color='#EF4444' />
+                  </div>
+                  <span className='text-[12px] text-gray-400 font-semibold uppercase tracking-wide'>
+                    Streak
+                  </span>
+                </div>
+                <div className='flex items-baseline gap-1'>
+                  <div className='text-[32px] font-extrabold text-white leading-none'>
+                    {streak}
+                  </div>
+                  <span className='text-[14px] text-gray-400 font-medium'>
+                    days
+                  </span>
+                </div>
+                <div className='mt-2 text-[12px] text-red-400'>
+                  🔥 Keep it up!
+                </div>
               </div>
-              <span className='text-[12px] text-gray-400 font-semibold uppercase tracking-wide'>
-                Streak
-              </span>
-            </div>
-            <div className='flex items-baseline gap-1'>
-              <div className='text-[32px] font-extrabold text-white leading-none'>
-                {streak}
-              </div>
-              <span className='text-[14px] text-gray-400 font-medium'>days</span>
-            </div>
-            <div className='mt-2 text-[12px] text-red-400'>🔥 Keep it up!</div>
-          </div>
 
-          {/* Water Card */}
-          <div className='bg-[#131520] border border-white/5 rounded-2xl p-4'>
-            <div className='flex items-center gap-2 mb-3'>
-              <div className='w-[34px] h-[34px] rounded-xl bg-blue-500/15 flex items-center justify-center'>
-                <Icon name='water' size={18} color='#3B82F6' />
+              {/* Water Card */}
+              <div className='bg-[#131520] border border-white/5 rounded-2xl p-4'>
+                <div className='flex items-center gap-2 mb-3'>
+                  <div className='w-[34px] h-[34px] rounded-xl bg-blue-500/15 flex items-center justify-center'>
+                    <Icon name='water' size={18} color='#3B82F6' />
+                  </div>
+                  <span className='text-[12px] text-gray-400 font-semibold uppercase tracking-wide'>
+                    Water
+                  </span>
+                </div>
+                <div className='flex items-baseline gap-1'>
+                  <div className='text-[32px] font-extrabold text-white leading-none'>
+                    {(waterIntake / 1000).toFixed(1)}
+                  </div>
+                  <span className='text-[14px] text-gray-400 font-medium'>
+                    L
+                  </span>
+                </div>
+                <div className='mt-2 text-[12px] text-blue-400'>
+                  💧 Stay hydrated
+                </div>
               </div>
-              <span className='text-[12px] text-gray-400 font-semibold uppercase tracking-wide'>
-                Water
-              </span>
-            </div>
-            <div className='flex items-baseline gap-1'>
-              <div className='text-[32px] font-extrabold text-white leading-none'>
-                {(waterIntake / 1000).toFixed(1)}
-              </div>
-              <span className='text-[14px] text-gray-400 font-medium'>L</span>
-            </div>
-            <div className='mt-2 text-[12px] text-blue-400'>💧 Stay hydrated</div>
-          </div>
 
-          {/* Steps Card */}
-          <button
-            className='bg-[#131520] border border-white/5 rounded-2xl p-4 text-left w-full hover:border-purple-500/30 transition-colors'
-            onClick={() => setStepModalOpen(true)}
-          >
-            <div className='flex items-center gap-2 mb-3'>
-              <div className='w-[34px] h-[34px] rounded-xl bg-purple-500/15 flex items-center justify-center'>
-                <Icon name='activity' size={18} color='#A855F7' />
-              </div>
-              <span className='text-[12px] text-gray-400 font-semibold uppercase tracking-wide'>
-                Steps
-              </span>
-            </div>
-            <div className='flex items-baseline gap-1 mb-2'>
-              <div className='text-[32px] font-extrabold text-white leading-none'>
-                {dailySteps.toLocaleString()}
-              </div>
-            </div>
-            <div className='w-full h-1.5 bg-[#1e2030] rounded-full overflow-hidden'>
-              <div
-                className='h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all'
-                style={{
-                  width: `${Math.min(100, (dailySteps / stepGoal) * 100)}%`,
-                }}
-              />
-            </div>
-            <div className='text-[11px] text-gray-400 mt-1.5'>
-              {Math.round((dailySteps / stepGoal) * 100)}% of {stepGoal.toLocaleString()}
-            </div>
-          </button>
+              {/* Steps Card */}
+              <button
+                className='bg-[#131520] border border-white/5 rounded-2xl p-4 text-left w-full hover:border-purple-500/30 transition-colors'
+                onClick={() => setStepModalOpen(true)}
+              >
+                <div className='flex items-center gap-2 mb-3'>
+                  <div className='w-[34px] h-[34px] rounded-xl bg-purple-500/15 flex items-center justify-center'>
+                    <Icon name='activity' size={18} color='#A855F7' />
+                  </div>
+                  <span className='text-[12px] text-gray-400 font-semibold uppercase tracking-wide'>
+                    Steps
+                  </span>
+                </div>
+                <div className='flex items-baseline gap-1 mb-2'>
+                  <div className='text-[32px] font-extrabold text-white leading-none'>
+                    {dailySteps.toLocaleString()}
+                  </div>
+                </div>
+                <div className='w-full h-1.5 bg-[#1e2030] rounded-full overflow-hidden'>
+                  <div
+                    className='h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all'
+                    style={{
+                      width: `${Math.min(100, (dailySteps / stepGoal) * 100)}%`,
+                    }}
+                  />
+                </div>
+                <div className='text-[11px] text-gray-400 mt-1.5'>
+                  {Math.round((dailySteps / stepGoal) * 100)}% of{' '}
+                  {stepGoal.toLocaleString()}
+                </div>
+              </button>
 
-          {/* Active Minutes Card */}
-          <div className='bg-[#131520] border border-white/5 rounded-2xl p-4'>
-            <div className='flex items-center gap-2 mb-3'>
-              <div className='w-[34px] h-[34px] rounded-xl bg-green-500/15 flex items-center justify-center'>
-                <Icon name='zap' size={18} color='#10B981' />
+              {/* Active Minutes Card */}
+              <div className='bg-[#131520] border border-white/5 rounded-2xl p-4'>
+                <div className='flex items-center gap-2 mb-3'>
+                  <div className='w-[34px] h-[34px] rounded-xl bg-green-500/15 flex items-center justify-center'>
+                    <Icon name='zap' size={18} color='#10B981' />
+                  </div>
+                  <span className='text-[12px] text-gray-400 font-semibold uppercase tracking-wide'>
+                    Active
+                  </span>
+                </div>
+                <div className='flex items-baseline gap-1'>
+                  <div className='text-[32px] font-extrabold text-white leading-none'>
+                    0
+                  </div>
+                  <span className='text-[14px] text-gray-400 font-medium'>
+                    min
+                  </span>
+                </div>
+                <div className='mt-2 text-[12px] text-green-400'>
+                  ⚡ Get moving
+                </div>
               </div>
-              <span className='text-[12px] text-gray-400 font-semibold uppercase tracking-wide'>
-                Active
-              </span>
-            </div>
-            <div className='flex items-baseline gap-1'>
-              <div className='text-[32px] font-extrabold text-white leading-none'>
-                0
-              </div>
-              <span className='text-[14px] text-gray-400 font-medium'>min</span>
-            </div>
-            <div className='mt-2 text-[12px] text-green-400'>⚡ Get moving</div>
-          </div>
             </>
           )}
+        </div>
+
+        {/* Weekly Volume */}
+        <div className='bg-[#131520] border border-white/5 rounded-[22px] p-[18px] mb-4'>
+          <div className='text-[13px] font-bold text-white mb-1'>
+            Volume This Week
+          </div>
+          <div className='text-[11px] text-gray-400 mb-3.5'>
+            Total weight lifted (kg)
+          </div>
+          <BarChart
+            data={weeklyVolume}
+            color='#818CF8'
+            labels={['M', 'T', 'W', 'T', 'F', 'S', 'S']}
+          />
         </div>
 
         {/* Recent Activity */}
@@ -513,33 +631,18 @@ export default function DashboardPage() {
               const color = item.type === 'meal' ? '#F59E0B' : '#818CF8'
 
               return (
-                <div
+                <ItemCard
                   key={`${item.type}-${item.timestamp}-${index}`}
-                  className='flex items-center gap-3 py-3 border-b border-white/5 last:border-0'
-                >
-                  <div
-                    className='w-[38px] h-[38px] rounded-xl flex items-center justify-center flex-shrink-0'
-                    style={{ backgroundColor: color + '20' }}
-                  >
-                    <Icon name={icon} size={18} color={color} />
-                  </div>
-                  <div className='flex-1'>
-                    <div className='text-[13px] font-semibold text-white'>
-                      {item.name}
-                    </div>
-                    <div className='text-[11px] text-gray-400'>
-                      {item.description}
-                    </div>
-                  </div>
-                  <div className='text-right'>
-                    <div className='text-[13px] font-semibold text-white'>
-                      {item.calories} kcal
-                    </div>
-                    <div className='text-[11px] text-gray-400'>
-                      {formatTimeAgo(item.timestamp)}
-                    </div>
-                  </div>
-                </div>
+                  id={`${item.type}-${index}`}
+                  title={item.name}
+                  subtitle={item.description}
+                  metadata={`${item.calories} kcal`}
+                  secondaryMetadata={formatTimeAgo(item.timestamp)}
+                  icon={icon}
+                  iconColor={color}
+                  canEdit={false}
+                  canDelete={false}
+                />
               )
             })
           )}

@@ -59,10 +59,11 @@ export default function NutritionPage() {
   });
   const [showFoodModal, setShowFoodModal] = useState(false);
   const [selectedMealType, setSelectedMealType] = useState<MealType>("breakfast");
+  const [viewMode, setViewMode] = useState<"today" | "week">("today");
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [viewMode]);
 
   const fetchData = async () => {
     try {
@@ -70,10 +71,58 @@ export default function NutritionPage() {
       const token = await getAuthToken();
       if (!token) return;
 
-      const today = new Date().toISOString().split("T")[0];
+      if (viewMode === "today") {
+        // Fetch today's meals
+        const today = new Date().toISOString().split("T")[0];
+        const mealsRes = await apiClient.get(`/api/nutrition/meals?date=${today}`, token);
 
-      // Fetch today's meals
-      const mealsRes = await apiClient.get(`/api/nutrition/meals?date=${today}`, token);
+        if (mealsRes.success) {
+          const meals = mealsRes.data || [];
+
+          // Group meals by type
+          const grouped: { [key in MealType]: MealLogPopulated[] } = {
+            breakfast: [],
+            lunch: [],
+            snack: [],
+            dinner: [],
+          };
+
+          meals.forEach((meal: any) => {
+            if (grouped[meal.meal_type as MealType]) {
+              grouped[meal.meal_type as MealType].push(meal);
+            }
+          });
+
+          setMealItems(grouped);
+
+          // Calculate totals
+          const totals = meals.reduce(
+            (acc: DailyNutrition, meal: any) => ({
+              calories: acc.calories + (meal.calories || 0),
+              protein: acc.protein + (meal.protein_g || 0),
+              carbs: acc.carbs + (meal.carbs_g || 0),
+              fat: acc.fat + (meal.fat_g || 0),
+            }),
+            { calories: 0, protein: 0, carbs: 0, fat: 0 }
+          );
+
+          setNutrition(totals);
+        }
+      } else {
+        // Fetch week's meals
+        const today = new Date();
+        const startOfWeek = new Date(today);
+        startOfWeek.setDate(today.getDate() - today.getDay()); // Get Sunday
+        const endOfWeek = new Date(startOfWeek);
+        endOfWeek.setDate(startOfWeek.getDate() + 6); // Get Saturday
+
+        const startDate = startOfWeek.toISOString().split("T")[0];
+        const endDate = endOfWeek.toISOString().split("T")[0];
+
+        const mealsRes = await apiClient.get(
+          `/api/nutrition/meals?start_date=${startDate}&end_date=${endDate}`,
+          token
+        );
 
       if (mealsRes.success) {
         const meals = mealsRes.data || [];
@@ -106,6 +155,7 @@ export default function NutritionPage() {
         );
 
         setNutrition(totals);
+      }
       }
 
       // Fetch goals
@@ -213,6 +263,23 @@ export default function NutritionPage() {
 
   return (
     <div className="px-6 pt-4 pb-4">
+      {/* Filter Tabs */}
+      <div className="flex gap-1.5 bg-[#131520] rounded-xl p-1 border border-white/5 mb-4">
+        {['Today', 'Week'].map((label) => (
+          <button
+            key={label}
+            onClick={() => setViewMode(label.toLowerCase() as "today" | "week")}
+            className={`flex-1 py-2 px-4 rounded-lg text-[13px] font-semibold transition-all ${
+              viewMode === label.toLowerCase()
+                ? 'bg-blue-600 text-white'
+                : 'text-gray-400 hover:text-gray-300'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+
       {/* Macro Summary */}
       <div className="bg-[#131520] border border-white/5 rounded-[22px] p-[18px] mb-4 flex items-center gap-4">
         <ProgressRing

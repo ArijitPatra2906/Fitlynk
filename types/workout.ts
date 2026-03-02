@@ -33,6 +33,7 @@ export interface Workout {
   exercises: ExerciseInWorkout[]
   started_at: string
   ended_at?: string
+  calories?: number
   notes?: string
   is_template: boolean
   template_id?: string

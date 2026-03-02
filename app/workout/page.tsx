@@ -9,6 +9,7 @@ import { apiClient } from '@/lib/api/client'
 import { ExerciseModal } from '@/components/ui/exercise-modal'
 import { toast } from 'sonner'
 import { Exercise, Workout, ExerciseInWorkout } from '@/types'
+import { WorkoutPageSkeleton } from '@/components/ui/skeleton'
 
 type SetData = {
   set_number: number
@@ -22,7 +23,9 @@ function WorkoutPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const templateId = searchParams.get('templateId')
+  const workoutId = searchParams.get('workoutId')
   const isTemplateMode = searchParams.get('mode') === 'template'
+  const nameFromUrl = searchParams.get('name')
 
   const [timer, setTimer] = useState(0)
   const [workout, setWorkout] = useState<Workout | null>(null)
@@ -31,22 +34,64 @@ function WorkoutPageContent() {
   const [saving, setSaving] = useState(false)
   const [showExerciseModal, setShowExerciseModal] = useState(false)
   const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null)
-  const [workoutName, setWorkoutName] = useState('')
+  const [workoutName, setWorkoutName] = useState(nameFromUrl || '')
+  const [isPaused, setIsPaused] = useState(false)
+  const [pausedAtMs, setPausedAtMs] = useState<number | null>(null)
+  const [historicalMaxByExercise, setHistoricalMaxByExercise] = useState<
+    Record<string, number>
+  >({})
   const initializedRef = useRef(false)
+  const isCompleted = !isTemplateMode && !!workout?.ended_at
 
   useEffect(() => {
-    // Only run timer if not in template mode
-    if (isTemplateMode) return
+    if (isTemplateMode) {
+      setTimer(0)
+      return
+    }
 
-    const interval = setInterval(() => setTimer((prev) => prev + 1), 1000)
+    const syncElapsedTime = () => {
+      if (!workout?.started_at) {
+        setTimer(0)
+        return
+      }
+
+      const startMs = new Date(workout.started_at).getTime()
+      const endMs = workout.ended_at
+        ? new Date(workout.ended_at).getTime()
+        : isPaused && pausedAtMs
+          ? pausedAtMs
+          : Date.now()
+
+      if (
+        !Number.isFinite(startMs) ||
+        !Number.isFinite(endMs) ||
+        endMs < startMs
+      ) {
+        setTimer(0)
+        return
+      }
+
+      setTimer(Math.floor((endMs - startMs) / 1000))
+    }
+
+    syncElapsedTime()
+
+    // Finished or paused workout: fixed duration until resumed.
+    if (workout?.ended_at || isPaused) {
+      return
+    }
+
+    const interval = setInterval(syncElapsedTime, 1000)
+    return () => clearInterval(interval)
+  }, [isTemplateMode, workout?.started_at, workout?.ended_at, isPaused, pausedAtMs])
+
+  useEffect(() => {
     return () => {
-      clearInterval(interval)
-      // Clean up pending save timeout
       if (saveTimeout) {
         clearTimeout(saveTimeout)
       }
     }
-  }, [saveTimeout, isTemplateMode])
+  }, [saveTimeout])
 
   useEffect(() => {
     // Prevent duplicate initialization in React StrictMode
@@ -87,16 +132,29 @@ function WorkoutPageContent() {
             if (createRes.success) {
               setWorkout(createRes.data)
               setExercises(createRes.data.exercises || [])
+              setWorkoutName(createRes.data.name || template.name || 'Workout')
+              await loadHistoricalMaxes(token, createRes.data._id)
             }
+          }
+        } else if (workoutId) {
+          // Load existing workout for editing
+          const workoutRes = await apiClient.get(
+            `/api/workouts/${workoutId}`,
+            token,
+          )
+          if (workoutRes.success && workoutRes.data) {
+            setWorkout(workoutRes.data)
+            setExercises(workoutRes.data.exercises || [])
+            setWorkoutName(workoutRes.data.name || 'Workout')
+            await loadHistoricalMaxes(token, workoutRes.data._id)
           }
         } else {
           // Start fresh workout or template
-          // Use temporary name for initial creation, user will change it
-          const tempName = isTemplateMode
-            ? 'Untitled Template'
-            : 'Untitled Workout'
+          const workoutName =
+            nameFromUrl ||
+            (isTemplateMode ? 'Untitled Template' : 'Untitled Workout')
           const newWorkout: Workout = {
-            name: tempName,
+            name: workoutName,
             started_at: new Date().toISOString(),
             exercises: [],
             is_template: isTemplateMode,
@@ -106,8 +164,8 @@ function WorkoutPageContent() {
           if (res.success) {
             setWorkout(res.data)
             setExercises(res.data.exercises || [])
-            // Set empty string so user sees placeholder
-            setWorkoutName('')
+            setWorkoutName(res.data.name || workoutName)
+            await loadHistoricalMaxes(token, res.data._id)
           }
         }
       } catch (err) {
@@ -118,12 +176,87 @@ function WorkoutPageContent() {
     }
 
     initWorkout()
-  }, [templateId])
+  }, [templateId, workoutId])
 
   const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60)
+    const hours = Math.floor(seconds / 3600)
+    const mins = Math.floor((seconds % 3600) / 60)
     const secs = seconds % 60
+    if (hours > 0) {
+      return `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+    }
     return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`
+  }
+
+  const getDurationSeconds = (startedAt?: string, endedAt?: string) => {
+    if (!startedAt) return 0
+    const startMs = new Date(startedAt).getTime()
+    const endMs = endedAt ? new Date(endedAt).getTime() : Date.now()
+    if (
+      !Number.isFinite(startMs) ||
+      !Number.isFinite(endMs) ||
+      endMs < startMs
+    ) {
+      return 0
+    }
+    return Math.floor((endMs - startMs) / 1000)
+  }
+
+  const getExerciseKey = (exercise: any): string | null => {
+    const rawId =
+      typeof exercise?.exercise_id === 'object'
+        ? exercise?.exercise_id?._id
+        : exercise?.exercise_id
+    if (!rawId) return null
+    return String(rawId)
+  }
+
+  const loadHistoricalMaxes = async (
+    token: string,
+    currentWorkoutId?: string,
+  ) => {
+    try {
+      const res = await apiClient.get(
+        '/api/workouts?is_template=false&completed=true&limit=200',
+        token,
+      )
+      if (!res.success) return
+
+      const workouts = res.data?.workouts || []
+      const maxByExercise: Record<string, number> = {}
+
+      workouts.forEach((historyWorkout: any) => {
+        if (
+          currentWorkoutId &&
+          historyWorkout?._id?.toString() === currentWorkoutId.toString()
+        ) {
+          return
+        }
+
+        historyWorkout.exercises?.forEach((exercise: any) => {
+          const key = getExerciseKey(exercise)
+          if (!key) return
+
+          exercise.sets?.forEach((set: any) => {
+            if (
+              set?.completed_at &&
+              !set?.is_warmup &&
+              (set?.reps || 0) > 0 &&
+              (set?.weight_kg || 0) >= 0
+            ) {
+              const currentMax = maxByExercise[key] || 0
+              if ((set?.weight_kg || 0) > currentMax) {
+                maxByExercise[key] = set.weight_kg || 0
+              }
+            }
+          })
+        })
+      })
+
+      setHistoricalMaxByExercise(maxByExercise)
+    } catch (error) {
+      console.error('Error loading PR baselines:', error)
+    }
   }
 
   // Debounced auto-save function
@@ -282,7 +415,7 @@ function WorkoutPageContent() {
       )
       if (res.success) {
         toast.success('Workout saved successfully!')
-        router.push('/exercise')
+        router.back()
       }
     } catch (err) {
       console.error('Error finishing workout:', err)
@@ -321,7 +454,7 @@ function WorkoutPageContent() {
 
       if (res.success) {
         toast.success('Template saved successfully!')
-        router.push('/exercise')
+        router.back()
       }
     } catch (err) {
       console.error('Error saving template:', err)
@@ -331,20 +464,142 @@ function WorkoutPageContent() {
     }
   }
 
+  const pauseWorkout = () => {
+    if (isTemplateMode || isCompleted || isPaused) return
+    setPausedAtMs(Date.now())
+    setIsPaused(true)
+  }
+
+  const resumePausedWorkout = async () => {
+    if (!workout?._id || !workout.started_at || !isPaused || !pausedAtMs) return
+
+    try {
+      setSaving(true)
+      const token = await getAuthToken()
+      if (!token) return
+
+      const pausedDurationMs = Math.max(0, Date.now() - pausedAtMs)
+      const adjustedStartedAt = new Date(
+        new Date(workout.started_at).getTime() + pausedDurationMs,
+      ).toISOString()
+
+      const exercisesForBackend = exercises.map((ex) => ({
+        ...ex,
+        exercise_id:
+          typeof ex.exercise_id === 'object'
+            ? ex.exercise_id._id
+            : ex.exercise_id,
+      }))
+
+      const res = await apiClient.put(
+        `/api/workouts/${workout._id}`,
+        {
+          ...workout,
+          started_at: adjustedStartedAt,
+          exercises: exercisesForBackend,
+        },
+        token,
+      )
+
+      if (res.success && res.data) {
+        setWorkout(res.data)
+        setExercises(res.data.exercises || [])
+      } else {
+        toast.error('Failed to resume workout')
+        return
+      }
+    } catch (err) {
+      console.error('Error resuming paused workout:', err)
+      toast.error('Failed to resume workout')
+      return
+    } finally {
+      setSaving(false)
+    }
+
+    setPausedAtMs(null)
+    setIsPaused(false)
+  }
+
+  const resumeWorkout = async () => {
+    if (!workout?._id || !workout.ended_at) return
+
+    try {
+      setSaving(true)
+      const token = await getAuthToken()
+      if (!token) return
+
+      // Keep the completed duration and continue from there.
+      const completedDuration = getDurationSeconds(
+        workout.started_at,
+        workout.ended_at,
+      )
+      const resumedStartAt = new Date(
+        Date.now() - completedDuration * 1000,
+      ).toISOString()
+
+      const exercisesForBackend = exercises.map((ex) => ({
+        ...ex,
+        exercise_id:
+          typeof ex.exercise_id === 'object'
+            ? ex.exercise_id._id
+            : ex.exercise_id,
+      }))
+
+      const res = await apiClient.put(
+        `/api/workouts/${workout._id}`,
+        {
+          ...workout,
+          started_at: resumedStartAt,
+          ended_at: null as any,
+          exercises: exercisesForBackend,
+        },
+        token,
+      )
+
+      if (res.success && res.data) {
+        setWorkout(res.data)
+        setExercises(res.data.exercises || [])
+        toast.success('Workout resumed')
+      } else {
+        toast.error('Failed to resume workout')
+      }
+    } catch (err) {
+      console.error('Error resuming workout:', err)
+      toast.error('Failed to resume workout')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const calculateStats = () => {
     let totalSets = 0
     let totalVolume = 0
+    const prExerciseIds = new Set<string>()
 
     exercises.forEach((ex) => {
+      const exerciseKey = getExerciseKey(ex)
+      const historicalMax = exerciseKey
+        ? historicalMaxByExercise[exerciseKey] || 0
+        : 0
+
       ex.sets.forEach((set) => {
         if (set.completed_at) {
           totalSets++
           totalVolume += set.weight_kg * set.reps
+
+          if (
+            exerciseKey &&
+            !set.is_warmup &&
+            (set.reps || 0) > 0 &&
+            (set.weight_kg || 0) > historicalMax
+          ) {
+            prExerciseIds.add(exerciseKey)
+          }
         }
       })
     })
 
-    return { totalSets, totalVolume }
+    return { totalSets, totalVolume, prCount: prExerciseIds.size }
   }
 
   const getExerciseName = (ex: ExerciseInWorkout): string => {
@@ -421,84 +676,165 @@ function WorkoutPageContent() {
     }
   }
 
+  const handleRemoveExercise = async (exerciseIndex: number) => {
+    // Remove exercise from local state
+    const updatedExercises = exercises.filter((_, i) => i !== exerciseIndex)
+    setExercises(updatedExercises)
+
+    // Auto-save to backend
+    if (workout?._id) {
+      try {
+        const token = await getAuthToken()
+        if (token) {
+          const updatedExercisesForBackend = updatedExercises.map((ex) => ({
+            ...ex,
+            exercise_id:
+              typeof ex.exercise_id === 'object'
+                ? ex.exercise_id._id
+                : ex.exercise_id,
+          }))
+
+          const res = await apiClient.put(
+            `/api/workouts/${workout._id}`,
+            { ...workout, exercises: updatedExercisesForBackend },
+            token,
+          )
+          if (!res.success) {
+            toast.error('Failed to remove exercise')
+          } else {
+            toast.success('Exercise removed')
+          }
+        }
+      } catch (err) {
+        console.error('Error removing exercise:', err)
+        toast.error('Failed to remove exercise')
+      }
+    }
+  }
+
   if (loading) {
-    return (
-      <div className='h-full flex items-center justify-center'>
-        <div className='text-gray-400'>Loading workout...</div>
-      </div>
-    )
+    return <WorkoutPageSkeleton />
   }
 
   const stats = calculateStats()
 
   return (
     <div className='h-full flex flex-col'>
-      {/* Custom Header with Timer */}
-      <div className='flex-shrink-0 bg-[#131520] border-b border-white/5 px-6 pt-safe pb-3'>
-        <div className='flex items-center justify-between mb-2.5'>
-          <Link href='/exercise'>
-            <Icon name='x' size={22} color='#64748B' />
-          </Link>
-          <div className='flex-1 mx-3 flex flex-col items-center gap-1'>
-            {!isTemplateMode && (
-              <div className='text-[12px] text-gray-400 uppercase tracking-wider'>
-                {formatTime(timer)}
-              </div>
-            )}
-            <input
-              type='text'
-              value={workoutName}
-              onChange={(e) => handleNameChange(e.target.value)}
-              placeholder={
-                isTemplateMode ? 'Template name...' : 'Workout name...'
-              }
-              className='w-full px-3 py-1.5 bg-[#0B0D17] border border-white/10 rounded-xl text-white text-center text-lg font-extrabold placeholder-gray-600 focus:outline-none focus:border-blue-500/50'
-            />
-          </div>
-          <div className='flex gap-2'>
+      {/* Workout Header */}
+      <div className='flex-shrink-0 border-b border-white/5 bg-gradient-to-b from-[#151a30] to-[#101525] px-4 sm:px-6 pt-safe pb-3'>
+        <div className='flex items-center justify-between mb-3'>
+          <button
+            onClick={() => router.back()}
+            className='w-9 h-9 rounded-xl border border-white/10 bg-white/5 flex items-center justify-center'
+          >
+            <Icon name='x' size={18} color='#94A3B8' />
+          </button>
+
+          {!isTemplateMode && (
+            <div className='px-3 py-1.5 rounded-xl border border-blue-500/25 bg-blue-500/10 text-[12px] font-bold text-blue-300 tracking-wide'>
+              {formatTime(
+                isCompleted
+                  ? getDurationSeconds(workout?.started_at, workout?.ended_at)
+                  : timer,
+              )}
+            </div>
+          )}
+
+          <div className='flex gap-1.5 sm:gap-2'>
             {isTemplateMode ? (
               <button
                 onClick={saveTemplateDirectly}
-                disabled={saving || exercises.length === 0}
-                className='py-1.5 px-3.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-500 text-[13px] font-bold disabled:opacity-50'
+                disabled={saving}
+                className='h-9 px-3.5 rounded-xl border border-blue-500/30 bg-blue-500/15 text-blue-300 text-[12px] font-semibold disabled:opacity-50'
               >
                 {saving ? 'Saving...' : 'Save'}
               </button>
-            ) : (
+            ) : isCompleted ? (
               <button
-                onClick={finishWorkout}
+                onClick={resumeWorkout}
                 disabled={saving}
-                className='py-1.5 px-3.5 rounded-xl bg-green-500/15 border border-green-500/30 text-green-500 text-[13px] font-bold disabled:opacity-50'
+                className='h-9 px-3.5 rounded-xl border border-orange-500/30 bg-orange-500/15 text-orange-300 text-[12px] font-semibold disabled:opacity-50'
               >
-                {saving ? 'Saving...' : 'Finish'}
+                {saving ? 'Resuming...' : 'Resume'}
               </button>
+            ) : (
+              <>
+                {isPaused ? (
+                  <button
+                    onClick={resumePausedWorkout}
+                    disabled={saving}
+                    className='h-9 px-3 rounded-xl border border-orange-500/30 bg-orange-500/15 text-orange-300 text-[12px] font-semibold disabled:opacity-50'
+                  >
+                    {saving ? 'Resuming...' : 'Resume'}
+                  </button>
+                ) : (
+                  <button
+                    onClick={pauseWorkout}
+                    disabled={saving}
+                    className='h-9 px-3 rounded-xl border border-yellow-500/30 bg-yellow-500/15 text-yellow-300 text-[12px] font-semibold disabled:opacity-50'
+                  >
+                    Pause
+                  </button>
+                )}
+                <button
+                  onClick={finishWorkout}
+                  disabled={saving}
+                  className='h-9 px-3.5 rounded-xl border border-green-500/35 bg-green-500/20 text-green-300 text-[12px] font-semibold disabled:opacity-50'
+                >
+                  {saving ? 'Saving...' : 'Finish'}
+                </button>
+              </>
             )}
           </div>
         </div>
+
+        <div className='mb-3'>
+          <h1 className='text-white text-[22px] leading-tight font-extrabold truncate'>
+            {workoutName || (isTemplateMode ? 'New Template' : 'New Workout')}
+          </h1>
+          {!isTemplateMode && (
+            <p className='text-[11px] text-gray-400 mt-0.5'>
+              {isCompleted
+                ? 'Completed workout'
+                : isPaused
+                  ? 'Paused'
+                  : 'Live session'}
+            </p>
+          )}
+        </div>
+
         {!isTemplateMode && (
-          <div className='flex gap-2.5'>
-            <div className='flex-1 text-center bg-[#0B0D17] rounded-xl py-2'>
+          <div className='grid grid-cols-3 gap-2'>
+            <div className='rounded-xl border border-white/8 bg-[#0C1222] px-2 py-2 text-center'>
               <div className='text-[14px] font-bold text-white'>
                 {stats.totalSets}
               </div>
-              <div className='text-[10px] text-gray-400'>Sets</div>
+              <div className='text-[10px] text-gray-400 uppercase tracking-wide'>
+                Sets
+              </div>
             </div>
-            <div className='flex-1 text-center bg-[#0B0D17] rounded-xl py-2'>
-              <div className='text-[14px] font-bold text-white'>
+            <div className='rounded-xl border border-white/8 bg-[#0C1222] px-2 py-2 text-center'>
+              <div className='text-[14px] font-bold text-white truncate'>
                 {Math.round(stats.totalVolume)} kg
               </div>
-              <div className='text-[10px] text-gray-400'>Volume</div>
+              <div className='text-[10px] text-gray-400 uppercase tracking-wide'>
+                Volume
+              </div>
             </div>
-            <div className='flex-1 text-center bg-[#0B0D17] rounded-xl py-2'>
-              <div className='text-[14px] font-bold text-white'>0 🏆</div>
-              <div className='text-[10px] text-gray-400'>PRs</div>
+            <div className='rounded-xl border border-white/8 bg-[#0C1222] px-2 py-2 text-center'>
+              <div className='text-[14px] font-bold text-white'>
+                {stats.prCount}
+              </div>
+              <div className='text-[10px] text-gray-400 uppercase tracking-wide'>
+                PRs
+              </div>
             </div>
           </div>
         )}
       </div>
 
       {/* Exercises */}
-      <div className='flex-1 overflow-y-auto px-6 py-4'>
+      <div className='flex-1 overflow-y-auto px-4 sm:px-6 py-4'>
         {exercises.length === 0 ? (
           <div className='text-center py-12'>
             <div className='text-gray-400 text-sm mb-4'>No exercises yet</div>
@@ -516,15 +852,27 @@ function WorkoutPageContent() {
                 key={exerciseIndex}
                 className='bg-[#131520] border border-white/5 rounded-2xl p-4 mb-3'
               >
-                <div className='text-[15px] font-bold text-white mb-3'>
-                  {getExerciseName(exercise)}
+                <div className='flex items-center justify-between mb-3'>
+                  <div className='text-[15px] font-bold text-white'>
+                    {getExerciseName(exercise)}
+                  </div>
+                  <button
+                    onClick={() => handleRemoveExercise(exerciseIndex)}
+                    disabled={isCompleted}
+                    className='p-2 rounded-lg bg-red-500/10 border border-red-500/20 hover:bg-red-500/20 transition-colors'
+                    title='Remove exercise'
+                  >
+                    <Icon name='trash-2' size={16} color='#EF4444' />
+                  </button>
                 </div>
                 {/* Set Header */}
-                <div className='grid grid-cols-[36px_1fr_1fr_36px] gap-2 mb-2'>
-                  {['Set', 'Weight (kg)', 'Reps', '✓'].map((header) => (
+                <div
+                  className={`grid gap-1.5 sm:gap-2 mb-2 ${isTemplateMode ? 'grid-cols-[40px_1fr_1fr]' : 'grid-cols-[40px_1fr_1fr_40px]'}`}
+                >
+                  {['Set', 'Weight', 'Reps', '✓'].map((header) => (
                     <div
                       key={header}
-                      className='text-[10px] text-gray-600 font-semibold text-center uppercase tracking-wider'
+                      className={`text-[10px] text-gray-600 font-semibold text-center uppercase tracking-wider ${header === '✓' && isTemplateMode ? 'hidden' : ''}`}
                     >
                       {header}
                     </div>
@@ -534,14 +882,7 @@ function WorkoutPageContent() {
                 {exercise.sets.map((set, setIndex) => (
                   <div
                     key={setIndex}
-                    className='
-    grid 
-    grid-cols-[28px_1fr_1fr_32px] 
-    sm:grid-cols-[36px_1fr_1fr_36px]
-    gap-1.5 sm:gap-2
-    mb-1.5 
-    items-center
-  '
+                    className={`grid gap-1.5 sm:gap-2 mb-1.5 items-center ${isTemplateMode ? 'grid-cols-[40px_1fr_1fr]' : 'grid-cols-[40px_1fr_1fr_40px]'}`}
                     style={{ opacity: set.completed_at ? 0.7 : 1 }}
                   >
                     {/* Set Number */}
@@ -562,6 +903,7 @@ function WorkoutPageContent() {
                           Number(e.target.value),
                         )
                       }
+                      placeholder='kg'
                       className={`
       rounded-lg sm:rounded-xl
       py-1.5 sm:py-2
@@ -571,6 +913,7 @@ function WorkoutPageContent() {
       text-white
       w-full
       focus:outline-none
+      placeholder:text-gray-600
       ${
         set.completed_at
           ? 'bg-green-500/10 border border-green-500/25'
@@ -592,6 +935,7 @@ function WorkoutPageContent() {
                           Number(e.target.value),
                         )
                       }
+                      placeholder='reps'
                       className={`
       rounded-lg sm:rounded-xl
       py-1.5 sm:py-2
@@ -601,6 +945,7 @@ function WorkoutPageContent() {
       text-white
       w-full
       focus:outline-none
+      placeholder:text-gray-600
       ${
         set.completed_at
           ? 'bg-green-500/10 border border-green-500/25'
@@ -612,15 +957,19 @@ function WorkoutPageContent() {
                     {/* Complete Button */}
                     <button
                       onClick={() =>
+                        !isTemplateMode &&
+                        !isPaused &&
+                        !isCompleted &&
                         toggleSetCompletion(exerciseIndex, setIndex)
                       }
-                      className={`
-      w-[30px] h-[30px]
+                      disabled={isTemplateMode || isCompleted || isPaused}
+                      className={`w-[30px] h-[30px]
       sm:w-[34px] sm:h-[34px]
       rounded-lg sm:rounded-xl
       flex items-center justify-center
       active:scale-95
       transition
+      ${isTemplateMode ? 'hidden' : ''}
       ${
         set.completed_at
           ? 'bg-green-500 border border-green-500'
@@ -643,6 +992,7 @@ function WorkoutPageContent() {
                 ))}
                 <button
                   onClick={() => addSet(exerciseIndex)}
+                  disabled={isCompleted}
                   className='w-full py-2.5 rounded-xl bg-indigo-500/10 border border-dashed border-indigo-500/30 text-indigo-400 text-[13px] font-semibold mt-1'
                 >
                   + Add Set
@@ -651,6 +1001,7 @@ function WorkoutPageContent() {
             ))}
             <button
               onClick={() => setShowExerciseModal(true)}
+              disabled={isCompleted}
               className='w-full py-3.5 rounded-2xl bg-blue-500/10 border border-dashed border-blue-500/30 text-blue-500 text-[14px] font-semibold'
             >
               + Add Exercise
@@ -664,6 +1015,11 @@ function WorkoutPageContent() {
         isOpen={showExerciseModal}
         onClose={() => setShowExerciseModal(false)}
         onSelectExercise={handleAddExercise}
+        disabledExerciseIds={exercises.map((ex) =>
+          typeof ex.exercise_id === 'object'
+            ? ex.exercise_id._id
+            : ex.exercise_id,
+        )}
       />
     </div>
   )

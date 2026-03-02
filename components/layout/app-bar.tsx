@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { Icon } from '@/components/ui/icon'
+import { Skeleton } from '@/components/ui/skeleton'
 
 interface AppBarConfig {
   title?: string
@@ -39,20 +40,6 @@ const nutritionConfig: AppBarConfig = {
   showBack: false,
   showNotifications: true,
   showAvatar: true,
-  actions: (
-    <div className='flex gap-1.5 bg-[#131520] rounded-xl p-1 border border-white/5'>
-      {['Today', 'Week'].map((label, i) => (
-        <div
-          key={label}
-          className={`py-1.5 px-3.5 rounded-lg text-[12px] font-semibold ${
-            i === 0 ? 'bg-blue-600 text-white' : 'text-gray-400'
-          }`}
-        >
-          {label}
-        </div>
-      ))}
-    </div>
-  ),
 }
 
 const progressConfig: AppBarConfig = {
@@ -88,6 +75,27 @@ const settingsGoalsConfig: AppBarConfig = {
   showAvatar: true,
 }
 
+const workoutsConfig: AppBarConfig = {
+  title: 'All Workouts',
+  showBack: true,
+  showNotifications: true,
+  showAvatar: true,
+}
+
+const templatesConfig: AppBarConfig = {
+  title: 'All Templates',
+  showBack: true,
+  showNotifications: true,
+  showAvatar: true,
+}
+
+const exercisesConfig: AppBarConfig = {
+  title: 'All Exercises',
+  showBack: true,
+  showNotifications: true,
+  showAvatar: true,
+}
+
 const routeConfigs: Record<string, AppBarConfig> = {
   '/dashboard': dashboardConfig,
   '/exercise': exerciseConfig,
@@ -96,6 +104,9 @@ const routeConfigs: Record<string, AppBarConfig> = {
   '/workout': workoutConfig,
   '/food-search': foodSearchConfig,
   '/settings/goals': settingsGoalsConfig,
+  '/workouts': workoutsConfig,
+  '/templates': templatesConfig,
+  '/exercises': exercisesConfig,
 }
 
 export function AppBar() {
@@ -103,8 +114,9 @@ export function AppBar() {
   const router = useRouter()
   const [greeting, setGreeting] = useState('')
   const [mounted, setMounted] = useState(false)
-  const [userName, setUserName] = useState('User')
+  const [userName, setUserName] = useState<string | null>(null)
   const [userAvatar, setUserAvatar] = useState<string | null>(null)
+  const [loading, setLoading] = useState(true)
 
   // Set greeting and fetch user data on client side only
   useEffect(() => {
@@ -119,6 +131,7 @@ export function AppBar() {
         const token = await getAuthToken()
 
         if (!token) {
+          setLoading(false)
           return
         }
 
@@ -129,6 +142,8 @@ export function AppBar() {
         }
       } catch (error) {
         console.error('[AppBar] Failed to fetch user data:', error)
+      } finally {
+        setLoading(false)
       }
     }
 
@@ -151,12 +166,17 @@ export function AppBar() {
   const config = routeConfigs[pathname] || { title: 'Fitlynk' }
 
   // Get user's first name for dashboard
-  const userInitial = userName.charAt(0).toUpperCase()
+  const userInitial = userName?.charAt(0).toUpperCase() || 'U'
 
   // Override title and subtitle for dashboard with user's name
-  if (pathname === '/dashboard' || pathname === '/dashboard/') {
-    config.title = userName
-    config.subtitle = mounted ? `${greeting} 👋` : ''
+  if (pathname === '/dashboard') {
+    if (loading) {
+      config.title = ''
+      config.subtitle = ''
+    } else {
+      config.title = userName || 'User'
+      config.subtitle = mounted ? `${greeting} 👋` : ''
+    }
   }
 
   return (
@@ -173,22 +193,31 @@ export function AppBar() {
         )}
 
         <div suppressHydrationWarning>
-          {config.subtitle && (
-            <div
-              className='text-[13px] text-gray-400 mb-0.5'
-              suppressHydrationWarning
-            >
-              {config.subtitle}
-            </div>
+          {loading && pathname === '/dashboard' ? (
+            <>
+              <Skeleton className='h-4 w-28 mb-1' />
+              <Skeleton className='h-6 w-20' />
+            </>
+          ) : (
+            <>
+              {config.subtitle && (
+                <div
+                  className='text-[13px] text-gray-400 mb-0.5'
+                  suppressHydrationWarning
+                >
+                  {config.subtitle}
+                </div>
+              )}
+              <div
+                className={`font-extrabold text-white tracking-tight ${
+                  config.subtitle ? 'text-[22px]' : 'text-[18px]'
+                }`}
+                suppressHydrationWarning
+              >
+                {config.title}
+              </div>
+            </>
           )}
-          <div
-            className={`font-extrabold text-white tracking-tight ${
-              config.subtitle ? 'text-[22px]' : 'text-[18px]'
-            }`}
-            suppressHydrationWarning
-          >
-            {config.title}
-          </div>
         </div>
       </div>
 
@@ -203,10 +232,12 @@ export function AppBar() {
         )}
 
         {config.showAvatar &&
-          (userAvatar ? (
+          (loading ? (
+            <Skeleton className='w-10 h-10 rounded-xl' />
+          ) : userAvatar ? (
             <img
               src={userAvatar}
-              alt={userName}
+              alt={userName || 'User'}
               className='w-10 h-10 rounded-full object-cover'
               suppressHydrationWarning
             />

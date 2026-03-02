@@ -1,4 +1,15 @@
 import React from 'react'
+import {
+  BookMarked,
+  ClipboardList,
+  Dumbbell,
+  FolderKanban,
+  Layers3,
+  ListChecks,
+  PlayCircle,
+  TimerReset,
+  type LucideIcon,
+} from 'lucide-react'
 
 interface IconProps {
   name: string
@@ -207,6 +218,39 @@ const iconPaths: Record<string, React.ReactNode> = {
       <line x1='1' y1='1' x2='23' y2='23' />
     </>
   ),
+  trash: (
+    <>
+      <path d='M3 6h18' />
+      <path d='M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6' />
+      <path d='M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2' />
+    </>
+  ),
+  'trash-2': (
+    <>
+      <path d='M3 6h18' />
+      <path d='M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6' />
+      <path d='M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2' />
+      <line x1='10' y1='11' x2='10' y2='17' />
+      <line x1='14' y1='11' x2='14' y2='17' />
+    </>
+  ),
+  'check-circle': (
+    <>
+      <circle cx='12' cy='12' r='10' />
+      <polyline points='9 12 11 14 15 10' />
+    </>
+  ),
+}
+
+const lucideIcons: Record<string, LucideIcon> = {
+  dumbbell: Dumbbell,
+  'book-marked': BookMarked,
+  'clipboard-list': ClipboardList,
+  'folder-kanban': FolderKanban,
+  'layers-3': Layers3,
+  'list-checks': ListChecks,
+  'play-circle': PlayCircle,
+  'timer-reset': TimerReset,
 }
 
 export function Icon({
@@ -216,6 +260,19 @@ export function Icon({
   strokeWidth = 1.8,
   className = '',
 }: IconProps) {
+  const LucideComponent = lucideIcons[name]
+
+  if (LucideComponent) {
+    return (
+      <LucideComponent
+        size={size}
+        color={color}
+        strokeWidth={strokeWidth}
+        className={className}
+      />
+    )
+  }
+
   return (
     <svg
       width={size}

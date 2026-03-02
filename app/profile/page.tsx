@@ -99,50 +99,54 @@ export default function ProfilePage() {
   }
 
   return (
-    <div>
-      {/* Profile Header with Avatar */}
-      <div className='bg-gradient-to-b from-[#0d1b3e] to-[#0B0D17] px-6 pt-12 pb-7 text-center'>
-        {userAvatar ? (
-          <img
-            src={userAvatar}
-            alt={userData?.name || 'User'}
-            className='w-20 h-20 rounded-[28px] object-cover mx-auto mb-3 shadow-[0_8px_32px_rgba(59,130,246,0.4)]'
-          />
-        ) : (
-          <div className='w-20 h-20 rounded-[28px] bg-gradient-to-br from-blue-500 to-green-500 flex items-center justify-center mx-auto mb-3 text-[32px] font-extrabold text-white shadow-[0_8px_32px_rgba(59,130,246,0.4)]'>
-            {userInitial}
-          </div>
-        )}
-        <div className='text-xl font-extrabold text-white mb-1'>
-          {userData?.name || 'User'}
-        </div>
-        <div className='text-[13px] text-gray-400 mb-3.5'>
-          {userData?.email || ''}
-        </div>
-        <div className='flex justify-center gap-6'>
-          {[
-            {
-              label: 'Height',
-              val: formatHeight(userData?.height, userData?.units),
-            },
-            {
-              label: 'Weight',
-              val: formatWeight(userData?.weight_kg, userData?.units),
-            },
-            { label: 'Age', val: calculateAge(userData?.date_of_birth) },
-          ].map((item) => (
-            <div key={item.label} className='text-center'>
-              <div className='text-[15px] font-bold text-white'>{item.val}</div>
-              <div className='text-[11px] text-gray-400'>{item.label}</div>
+    <div className='h-full flex flex-col overflow-hidden'>
+      {/* Fixed Top Section */}
+      <div className='flex-shrink-0'>
+        {/* Profile Header with Avatar */}
+        <div className='bg-gradient-to-b from-[#0d1b3e] to-[#0B0D17] px-6 pt-12 pb-7 text-center'>
+          {userAvatar ? (
+            <img
+              src={userAvatar}
+              alt={userData?.name || 'User'}
+              className='w-20 h-20 rounded-[28px] object-cover mx-auto mb-3 shadow-[0_8px_32px_rgba(59,130,246,0.4)]'
+            />
+          ) : (
+            <div className='w-20 h-20 rounded-[28px] bg-gradient-to-br from-blue-500 to-green-500 flex items-center justify-center mx-auto mb-3 text-[32px] font-extrabold text-white shadow-[0_8px_32px_rgba(59,130,246,0.4)]'>
+              {userInitial}
             </div>
-          ))}
+          )}
+          <div className='text-xl font-extrabold text-white mb-1'>
+            {userData?.name || 'User'}
+          </div>
+          <div className='text-[13px] text-gray-400 mb-3.5'>
+            {userData?.email || ''}
+          </div>
+          <div className='flex justify-center gap-6'>
+            {[
+              {
+                label: 'Height',
+                val: formatHeight(userData?.height, userData?.units),
+              },
+              {
+                label: 'Weight',
+                val: formatWeight(userData?.weight_kg, userData?.units),
+              },
+              { label: 'Age', val: calculateAge(userData?.date_of_birth) },
+            ].map((item) => (
+              <div key={item.label} className='text-center'>
+                <div className='text-[15px] font-bold text-white'>{item.val}</div>
+                <div className='text-[11px] text-gray-400'>{item.label}</div>
+              </div>
+            ))}
+          </div>
         </div>
+
       </div>
 
-      {/* Settings */}
-      <div className='px-6 pb-4'>
+      {/* Scrollable Section starts after header */}
+      <div className='flex-1 overflow-y-auto px-6 pb-6'>
         {/* My Goals */}
-        <div className='mb-5'>
+        <div className='mb-5 pt-3'>
           <div className='text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2'>
             My Goals
           </div>
