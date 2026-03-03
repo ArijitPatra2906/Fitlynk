@@ -414,19 +414,21 @@ export default function ProfilePage() {
   return (
     <div className='h-full flex flex-col overflow-hidden'>
       <div className='flex-shrink-0'>
-        <div className='bg-gradient-to-b from-[#0d1b3e] to-[#0B0D17] px-6 pt-12 pb-7 text-center'>
-          <div className='relative w-20 h-20 mx-auto mb-3'>
+        <div className='app-surface px-6 pt-14 pb-8 text-center border-b border-[color:var(--app-border)]'>
+          {/* Avatar */}
+          <div className='relative w-20 h-20 mx-auto mb-4'>
             {userAvatar ? (
               <img
                 src={userAvatar}
                 alt={userData?.name || 'User'}
-                className='w-20 h-20 rounded-[28px] object-cover shadow-[0_8px_32px_rgba(59,130,246,0.4)]'
+                className='w-20 h-20 rounded-[28px] object-cover shadow-md'
               />
             ) : (
-              <div className='w-20 h-20 rounded-[28px] bg-gradient-to-br from-blue-500 to-green-500 flex items-center justify-center text-[32px] font-extrabold text-white shadow-[0_8px_32px_rgba(59,130,246,0.4)]'>
+              <div className='w-20 h-20 rounded-[28px] bg-gradient-to-br from-blue-500 to-green-500 flex items-center justify-center text-[32px] font-extrabold text-white shadow-md'>
                 {userInitial}
               </div>
             )}
+
             <button
               type='button'
               onClick={async () => {
@@ -436,19 +438,25 @@ export default function ProfilePage() {
                   loadInitialAvatars()
                 }
               }}
-              className='absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-blue-600 border-2 border-[#0B0D17] flex items-center justify-center'
+              className='absolute -bottom-1 -right-1 w-8 h-8 rounded-full bg-blue-600 border border-white flex items-center justify-center shadow-sm'
               aria-label='Edit profile'
             >
               <Icon name='edit' size={14} color='#ffffff' />
             </button>
           </div>
-          <div className='text-xl font-extrabold text-white mb-1'>
+
+          {/* Name */}
+          <div className='text-2xl font-extrabold text-[color:var(--app-text)] mb-1'>
             {userData?.name || 'User'}
           </div>
-          <div className='text-[13px] text-gray-400 mb-3.5'>
+
+          {/* Email */}
+          <div className='text-[13px] text-[color:var(--app-text-muted)] mb-4'>
             {userData?.email || ''}
           </div>
-          <div className='flex justify-center gap-6'>
+
+          {/* Stats */}
+          <div className='flex justify-center gap-8'>
             {[
               {
                 label: 'Height',
@@ -461,10 +469,12 @@ export default function ProfilePage() {
               { label: 'Age', val: calculateAge(userData?.date_of_birth) },
             ].map((item) => (
               <div key={item.label} className='text-center'>
-                <div className='text-[15px] font-bold text-white'>
+                <div className='text-[16px] font-bold text-[color:var(--app-text)]'>
                   {item.val}
                 </div>
-                <div className='text-[11px] text-gray-400'>{item.label}</div>
+                <div className='text-[11px] text-[color:var(--app-text-muted)]'>
+                  {item.label}
+                </div>
               </div>
             ))}
           </div>
@@ -533,11 +543,11 @@ export default function ProfilePage() {
               <span className='flex-1 text-[14px] font-medium text-white'>
                 Dark Mode
               </span>
-              <span className='text-[13px] text-gray-400'>On</span>
-              {/* <span className='text-[13px] text-gray-400'>
+              {/* <span className='text-[13px] text-gray-400'>On</span> */}
+              <span className='text-[13px] text-gray-400'>
                 {themeMode === 'dark' ? 'On' : 'Off'}
-              </span> */}
-              {/* <div
+              </span>
+              <div
                 className={`w-11 h-6 rounded-full p-1 transition-colors ${
                   themeMode === 'dark' ? 'bg-blue-600' : 'bg-slate-500'
                 }`}
@@ -547,8 +557,8 @@ export default function ProfilePage() {
                     themeMode === 'dark' ? 'translate-x-5' : 'translate-x-0'
                   }`}
                 />
-              </div> */}
-              <Icon name='chevronRight' size={16} color='#374151' />
+              </div>
+              {/* <Icon name='chevronRight' size={16} color='#374151' /> */}
             </button>
           </div>
         </div>

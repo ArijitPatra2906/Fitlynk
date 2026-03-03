@@ -110,7 +110,10 @@ export default function WaterPage() {
 
   const progressPercent = useMemo(() => {
     if (waterGoalMl <= 0) return 0
-    return Math.max(0, Math.min(100, Math.round((todayTotalMl / waterGoalMl) * 100)))
+    return Math.max(
+      0,
+      Math.min(100, Math.round((todayTotalMl / waterGoalMl) * 100)),
+    )
   }, [todayTotalMl, waterGoalMl])
 
   const groupedLogs = useMemo(() => {
@@ -173,7 +176,10 @@ export default function WaterPage() {
   const refreshTodayWater = useCallback(async (token: string) => {
     const { apiClient } = await import('@/lib/api/client')
     const today = getDateKey(new Date())
-    const waterRes = await apiClient.get(`/api/metrics/water?date=${today}`, token)
+    const waterRes = await apiClient.get(
+      `/api/metrics/water?date=${today}`,
+      token,
+    )
     if (!waterRes.success) {
       throw new Error(waterRes.error || 'Failed to fetch today water')
     }
@@ -195,8 +201,12 @@ export default function WaterPage() {
           return
         }
 
-        const goalsRes = await apiClient.get('/api/metrics/goals/current', token)
-        const currentGoal = goalsRes.success && goalsRes.data ? goalsRes.data : null
+        const goalsRes = await apiClient.get(
+          '/api/metrics/goals/current',
+          token,
+        )
+        const currentGoal =
+          goalsRes.success && goalsRes.data ? goalsRes.data : null
 
         const resolvedWaterGoal = Number(
           currentGoal?.water_target_ml || DEFAULT_WATER_GOAL_ML,
@@ -321,25 +331,25 @@ export default function WaterPage() {
             </div>
           )}
 
-          <div className='bg-gradient-to-br from-[#1a1f35] to-[#102346] border border-blue-500/20 rounded-2xl p-4 mb-4'>
+          <div className='bg-white border border-slate-200 shadow-sm rounded-2xl p-5 mb-4'>
             <div className='flex items-center gap-2 mb-2'>
               <div className='w-8 h-8 rounded-lg bg-blue-500/20 flex items-center justify-center'>
                 <Icon name='water' size={16} color='#60A5FA' />
               </div>
-              <div className='text-[12px] text-gray-300 font-semibold uppercase tracking-wide'>
+              <div className='text-[12px] bg-slate-200 font-semibold uppercase tracking-wide'>
                 Today Water
               </div>
             </div>
             <div className='flex items-baseline gap-1 mb-1'>
-              <div className='text-[34px] text-white font-extrabold leading-none'>
+              <div className='text-[34px] text-[color:var(--app-text)] font-extrabold leading-none'>
                 {(todayTotalMl / 1000).toFixed(1)}
               </div>
-              <div className='text-[14px] text-gray-300'>L</div>
+              <div className='text-[14px] bg-slate-200'>L</div>
             </div>
-            <div className='text-[12px] text-gray-400 mb-3'>
+            <div className='text-[12px] bg-slate-200 mb-3'>
               {progressPercent}% of {(waterGoalMl / 1000).toFixed(1)} L goal
             </div>
-            <div className='h-2 rounded-full bg-[#1e2030] overflow-hidden'>
+            <div className='h-2 rounded-full bg-slate-200 overflow-hidden'>
               <div
                 className='h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full transition-all'
                 style={{ width: `${progressPercent}%` }}
@@ -347,9 +357,11 @@ export default function WaterPage() {
             </div>
           </div>
 
-          <div className='bg-[#131520] border border-white/10 rounded-2xl p-4 mb-4'>
+          <div className='bg-white border border-slate-200 shadow-sm rounded-2xl p-4 mb-4'>
             <div className='flex items-center justify-between mb-3'>
-              <div className='text-[14px] text-white font-bold'>Water Goal</div>
+              <div className='text-[15px] font-semibold text-[color:var(--app-text)] font-bold'>
+                Water Goal
+              </div>
               <div className='text-[16px] font-bold text-blue-400'>
                 {(waterGoalMl / 1000).toFixed(1)} L
               </div>
@@ -367,14 +379,16 @@ export default function WaterPage() {
               type='button'
               onClick={handleGoalSave}
               disabled={savingGoal}
-              className='mt-3 w-full py-3 rounded-xl bg-blue-600 text-white text-[14px] font-semibold disabled:opacity-50'
+              className='mt-3 w-full py-3 rounded-xl bg-blue-600 text-[color:var(--app-text)] text-[14px] font-semibold disabled:opacity-50'
             >
               {savingGoal ? 'Saving...' : 'Save Water Goal'}
             </button>
           </div>
 
-          <div className='bg-[#131520] border border-white/10 rounded-2xl p-4 mb-4'>
-            <div className='text-[14px] text-white font-bold mb-3'>Log Water</div>
+          <div className='bg-white border border-slate-200 shadow-sm rounded-2xl p-4 mb-4'>
+            <div className='text-[15px] font-semibold text-[color:var(--app-text)] font-bold mb-3'>
+              Log Water
+            </div>
             <div className='grid grid-cols-3 gap-2 mb-3'>
               {[250, 500, 1000].map((amount) => (
                 <button
@@ -384,8 +398,8 @@ export default function WaterPage() {
                   disabled={savingWater}
                   className={`border rounded-lg py-2 text-[12px] font-semibold disabled:opacity-50 ${
                     Number(manualAmount) === amount
-                      ? 'bg-blue-600/20 border-blue-500/40 text-blue-200'
-                      : 'bg-[#1a1f35] border-white/10 text-blue-300'
+                      ? 'bg-blue-600 text-white border-blue-600'
+                      : 'bg-white border border-slate-200 shadow-sm text-blue-600'
                   }`}
                 >
                   +{amount} ml
@@ -400,16 +414,18 @@ export default function WaterPage() {
                 max={String(MAX_WATER_LOG_ML)}
                 value={manualAmount}
                 onChange={(e) => setManualAmount(e.target.value)}
-                className='bg-[#1a1f35] border border-white/10 rounded-xl px-3 py-3 text-white text-[16px]'
+                className='bg-[#1a1f35] border border-white/10 rounded-xl px-3 py-3 text-[color:var(--app-text)] text-[16px]'
                 placeholder='Enter ml'
               />
               <button
                 type='button'
                 disabled={savingWater}
                 onClick={() =>
-                  void addWater(Math.max(1, parseInt(manualAmount || '0', 10) || 0))
+                  void addWater(
+                    Math.max(1, parseInt(manualAmount || '0', 10) || 0),
+                  )
                 }
-                className='px-4 py-3 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 text-[13px] font-semibold text-white disabled:opacity-50'
+                className='px-4 py-3 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 text-[13px] font-semibold text-[color:var(--app-text)] disabled:opacity-50'
               >
                 {savingWater ? 'Saving...' : 'Save'}
               </button>
@@ -417,15 +433,17 @@ export default function WaterPage() {
           </div>
 
           <div className='flex items-center justify-between mb-3'>
-            <div className='text-[15px] text-white font-bold'>Water Logs</div>
+            <div className='text-[15px] text-[color:var(--app-text)] font-bold'>
+              Water Logs
+            </div>
             <div className='flex gap-2'>
               <button
                 type='button'
                 onClick={() => handleFilterChange(7)}
                 className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold ${
                   filter === 7
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-[#131520] border border-white/10 text-gray-300'
+                    ? 'bg-blue-600 text-[color:var(--app-text)]'
+                    : 'bg-white border border-slate-200 shadow-sm bg-slate-200'
                 }`}
               >
                 Last 7 days
@@ -435,8 +453,8 @@ export default function WaterPage() {
                 onClick={() => handleFilterChange(30)}
                 className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold ${
                   filter === 30
-                    ? 'bg-blue-600 text-white'
-                    : 'bg-[#131520] border border-white/10 text-gray-300'
+                    ? 'bg-blue-600 text-[color:var(--app-text)]'
+                    : 'bg-white border border-slate-200 shadow-sm bg-slate-200'
                 }`}
               >
                 Last 30 days
@@ -445,9 +463,11 @@ export default function WaterPage() {
           </div>
 
           {logsLoading ? (
-            <div className='text-gray-400 text-sm'>Loading logs...</div>
+            <div className='bg-slate-200 text-sm'>Loading logs...</div>
           ) : logs.length === 0 ? (
-            <div className='text-gray-400 text-sm'>No water logs in this range.</div>
+            <div className='bg-slate-200 text-sm'>
+              No water logs in this range.
+            </div>
           ) : (
             <div className='space-y-2'>
               {groupedLogs.map((group) => {
@@ -456,14 +476,14 @@ export default function WaterPage() {
                 return (
                   <div
                     key={group.day}
-                    className='bg-[#131520] border border-white/10 rounded-xl p-3'
+                    className='bg-white border border-slate-200 shadow-sm rounded-xl p-3'
                   >
                     <div className='grid grid-cols-[1fr_auto_auto] items-center gap-3'>
                       <div className='min-w-0'>
-                        <div className='text-[13px] text-white font-semibold'>
+                        <div className='text-[13px] text-[color:var(--app-text)] font-semibold'>
                           {formatDayTitle(group.day)}
                         </div>
-                        <div className='text-[11px] text-gray-400'>
+                        <div className='text-[11px] bg-slate-200'>
                           {group.entries.length} logs
                         </div>
                       </div>
@@ -477,7 +497,7 @@ export default function WaterPage() {
                         <div className='text-[20px] text-blue-300 font-bold leading-none'>
                           {Math.round(group.total_ml)}
                         </div>
-                        <div className='text-[11px] text-gray-400'>ml</div>
+                        <div className='text-[11px] bg-slate-200'>ml</div>
                       </div>
 
                       <button
@@ -487,8 +507,10 @@ export default function WaterPage() {
                             prev === group.day ? null : group.day,
                           )
                         }
-                        className='justify-self-end w-8 h-8 rounded-xl border border-white/10 bg-[#1a1f35] hover:bg-[#20263f] transition-colors flex items-center justify-center'
-                        aria-label={isOpen ? 'Collapse day logs' : 'Expand day logs'}
+                        className='justify-self-end w-8 h-8 rounded-xl border border-white/10 app-surface hover:bg-slate-200 transition-colors flex items-center justify-center'
+                        aria-label={
+                          isOpen ? 'Collapse day logs' : 'Expand day logs'
+                        }
                       >
                         <Icon
                           name={isOpen ? 'x' : 'plus'}
@@ -511,10 +533,10 @@ export default function WaterPage() {
                             key={entry._id}
                             className='flex items-center justify-between rounded-lg bg-[#1a1f35] px-3 py-2'
                           >
-                            <div className='text-[12px] text-gray-300'>
+                            <div className='text-[12px] bg-slate-200'>
                               {formatTime(entry.created_at) || 'No time'}
                             </div>
-                            <div className='text-[13px] font-semibold text-white'>
+                            <div className='text-[13px] font-semibold text-[color:var(--app-text)]'>
                               {Math.round(entry.amount_ml)} ml
                             </div>
                           </div>

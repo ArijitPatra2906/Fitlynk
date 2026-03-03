@@ -622,7 +622,7 @@ export default function ProgressPage() {
             </div>
           )}
 
-          <div className='mb-4 rounded-2xl bg-[#111525] border border-white/5 p-1 grid grid-cols-4 gap-1'>
+          <div className='mb-4 rounded-2xl app-surface border border-[color:var(--app-border)] p-1 grid grid-cols-4 gap-1'>
             {TABS.map((item) => (
               <button
                 key={item.id}
@@ -630,8 +630,8 @@ export default function ProgressPage() {
                 onClick={() => setTab(item.id)}
                 className={`h-9 rounded-xl text-[12px] font-semibold transition-colors ${
                   tab === item.id
-                    ? 'bg-gradient-to-br from-blue-600 to-blue-700 text-white'
-                    : 'text-gray-400 hover:text-gray-200'
+                    ? 'bg-blue-600 text-white'
+                    : 'text-[color:var(--app-text-muted)] hover:text-[color:var(--app-text)]'
                 }`}
               >
                 {item.label}
@@ -646,10 +646,11 @@ export default function ProgressPage() {
                   key={d}
                   type='button'
                   onClick={() => setRange(d as RangeDays)}
-                  className={`h-8 px-3 rounded-lg text-[11px] font-semibold border transition-colors ${
+                  className={`h-8 px-3 rounded-lg text-[11px] font-semibold border transition-colors
+                  ${
                     range === d
-                      ? 'bg-blue-500/15 border-blue-500/40 text-blue-200'
-                      : 'bg-[#131520] border-white/10 text-gray-400 hover:text-gray-200'
+                      ? 'bg-blue-500/15 border-blue-500/40 text-blue-600'
+                      : 'app-surface border-[color:var(--app-border)] text-[color:var(--app-text-muted)] hover:text-[color:var(--app-text)]'
                   }`}
                 >
                   {d} days

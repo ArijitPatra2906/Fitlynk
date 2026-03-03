@@ -6,9 +6,7 @@ import { Icon } from '@/components/ui/icon'
 import Link from 'next/link'
 import { getAuthToken } from '@/lib/auth/auth-token'
 import { apiClient } from '@/lib/api/client'
-import {
-  ExercisePageSkeleton,
-} from '@/components/ui/skeleton'
+import { ExercisePageSkeleton } from '@/components/ui/skeleton'
 import { Workout, Exercise } from '@/types'
 import { ItemCard } from '@/components/common/item-card'
 import { WorkoutNameDialog } from '@/components/workout/workout-name-dialog'
@@ -17,7 +15,13 @@ import { ExerciseEditDialog } from '@/components/exercise/exercise-edit-dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 const iconColors = ['#818CF8', '#10B981', '#F59E0B', '#EC4899', '#8B5CF6']
-const iconNames = ['layers-3', 'folder-kanban', 'clipboard-list', 'book-marked', 'target']
+const iconNames = [
+  'layers-3',
+  'folder-kanban',
+  'clipboard-list',
+  'book-marked',
+  'target',
+]
 
 export default function ExercisePage() {
   const router = useRouter()
@@ -276,43 +280,51 @@ export default function ExercisePage() {
   return (
     <div className='px-6 pt-5 pb-4'>
       {/* Quick Actions */}
-      <div className='grid grid-cols-2 gap-2.5 mb-4'>
+      <div className='grid grid-cols-2 gap-3 mb-4'>
+        {/* QUICK CARD */}
         <button
           onClick={() => setShowWorkoutDialog(true)}
-          className='text-left bg-gradient-to-br from-[#1a1f35] to-[#0d1b3e] border border-indigo-500/25 rounded-2xl p-3.5 min-h-[126px] flex flex-col shadow-[0_8px_18px_rgba(5,10,30,0.35)]'
+          className='text-left app-surface border border-[color:var(--app-border)] rounded-2xl p-4 min-h-[126px] flex flex-col transition-all duration-200 hover:shadow-sm'
         >
-          <div className='flex items-center justify-between mb-2.5'>
-            <div className='w-9 h-9 rounded-xl bg-indigo-500/18 border border-indigo-400/20 flex items-center justify-center'>
-              <Icon name='dumbbell' size={17} color='#818CF8' />
+          <div className='flex items-center justify-between mb-3'>
+            <div className='w-9 h-9 rounded-xl bg-indigo-500/15 border border-indigo-400/25 flex items-center justify-center'>
+              <Icon name='dumbbell' size={17} color='#6366F1' />
             </div>
-            <div className='flex items-center gap-1 text-indigo-300 text-[11px] font-semibold tracking-wide uppercase'>
-              Start <Icon name='chevronRight' size={12} color='#818CF8' />
+
+            <div className='flex items-center gap-1 text-indigo-500 text-[11px] font-semibold tracking-wide uppercase'>
+              Start <Icon name='chevronRight' size={12} color='#6366F1' />
             </div>
           </div>
-          <div className='text-[18px] leading-none font-extrabold text-white mb-1.5'>
+
+          <div className='text-[18px] leading-none font-extrabold text-[color:var(--app-text)] mb-1.5'>
             Quick
           </div>
-          <div className='text-[11px] text-gray-400 leading-snug'>
+
+          <div className='text-[12px] text-[color:var(--app-text-muted)] leading-snug'>
             Start workout now
           </div>
         </button>
 
+        {/* TEMPLATE CARD */}
         <button
           onClick={() => setShowTemplateDialog(true)}
-          className='text-left bg-gradient-to-br from-[#0d1b3e] to-[#1a1f35] border border-blue-500/25 rounded-2xl p-3.5 min-h-[126px] flex flex-col shadow-[0_8px_18px_rgba(5,10,30,0.35)]'
+          className='text-left app-surface border border-[color:var(--app-border)] rounded-2xl p-4 min-h-[126px] flex flex-col transition-all duration-200 hover:shadow-sm'
         >
-          <div className='flex items-center justify-between mb-2.5'>
-            <div className='w-9 h-9 rounded-xl bg-blue-500/18 border border-blue-400/20 flex items-center justify-center'>
+          <div className='flex items-center justify-between mb-3'>
+            <div className='w-9 h-9 rounded-xl bg-blue-500/15 border border-blue-400/25 flex items-center justify-center'>
               <Icon name='plus' size={17} color='#3B82F6' />
             </div>
-            <div className='flex items-center gap-1 text-blue-300 text-[11px] font-semibold tracking-wide uppercase'>
+
+            <div className='flex items-center gap-1 text-blue-500 text-[11px] font-semibold tracking-wide uppercase'>
               Create <Icon name='chevronRight' size={12} color='#3B82F6' />
             </div>
           </div>
-          <div className='text-[18px] leading-none font-extrabold text-white mb-1.5'>
+
+          <div className='text-[18px] leading-none font-extrabold text-[color:var(--app-text)] mb-1.5'>
             Template
           </div>
-          <div className='text-[11px] text-gray-400 leading-snug'>
+
+          <div className='text-[12px] text-[color:var(--app-text-muted)] leading-snug'>
             Build reusable plan
           </div>
         </button>
@@ -327,7 +339,9 @@ export default function ExercisePage() {
             <Icon name='activity' size={18} color='#22D3EE' />
           </div>
           <div>
-            <div className='text-[14px] font-bold text-white'>Steps Tracker</div>
+            <div className='text-[14px] font-bold text-white'>
+              Steps Tracker
+            </div>
             <div className='text-[11px] text-gray-400'>
               Goal, logs, and manual entry
             </div>
@@ -338,7 +352,9 @@ export default function ExercisePage() {
 
       {/* Recent Workouts */}
       <div className='flex items-center justify-between mb-3'>
-        <div className='text-[14px] font-bold text-white'>Recent Workouts</div>
+        <div className='text-[14px] font-bold text-[color:var(--app-text)]'>
+          Recent Workouts
+        </div>
         {completedWorkouts.length > 5 && (
           <Link
             href='/workouts'
@@ -390,7 +406,9 @@ export default function ExercisePage() {
 
       {/* Templates */}
       <div className='flex items-center justify-between mb-3'>
-        <div className='text-[14px] font-bold text-white'>My Templates</div>
+        <div className='text-[14px] font-bold text-[color:var(--app-text)]'>
+          My Templates
+        </div>
         {templates.length > 5 && (
           <Link
             href='/templates'
@@ -435,7 +453,9 @@ export default function ExercisePage() {
 
       {/* All Exercises */}
       <div className='flex items-center justify-between mb-3'>
-        <div className='text-[14px] font-bold text-white'>All Exercises</div>
+        <div className='text-[14px] font-bold text-[color:var(--app-text)]'>
+          All Exercises
+        </div>
         {exercises.length > 5 && (
           <Link
             href='/exercises'

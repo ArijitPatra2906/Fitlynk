@@ -17,7 +17,7 @@
   html[data-theme='light'] {
     --app-bg: #f4f7fb;
     --app-surface: #ffffff;
-    --app-surface-2: #eef2f9;
+    --app-surface-2: #f8fafc;
     --app-border: rgba(15, 23, 42, 0.12);
     --app-text: #0f172a;
     --app-text-muted: #475569;
@@ -32,7 +32,11 @@
   body {
     background-color: var(--app-bg);
     color: var(--app-text);
-    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    font-family:
+      'Inter',
+      system-ui,
+      -apple-system,
+      sans-serif;
     overflow: hidden;
     position: fixed;
     width: 100%;
@@ -88,7 +92,8 @@ html[data-theme='light'] .from-\[\#1a1f35\],
 html[data-theme='light'] .from-\[\#0d1b3e\] {
   --tw-gradient-from: #eaf0fb var(--tw-gradient-from-position) !important;
   --tw-gradient-to: rgb(234 240 251 / 0) var(--tw-gradient-to-position) !important;
-  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+  --tw-gradient-stops:
+    var(--tw-gradient-from), var(--tw-gradient-to) !important;
 }
 
 html[data-theme='light'] .to-\[\#0d1b3e\],
@@ -217,7 +222,8 @@ body {
 }
 
 @keyframes pulse-slow {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -235,7 +241,9 @@ body {
 }
 
 @keyframes bounce-dot {
-  0%, 80%, 100% {
+  0%,
+  80%,
+  100% {
     transform: translateY(0);
   }
   40% {
@@ -244,7 +252,8 @@ body {
 }
 
 @keyframes skeleton-pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -304,4 +313,24 @@ body {
 
 .animate-loading-bar {
   animation: loading-bar 1.5s ease-in-out infinite;
+}
+
+/* Premium card style */
+.card-elevated {
+  background: var(--app-surface);
+  border: 1px solid var(--app-border);
+}
+
+/* Add soft shadow only in light mode */
+html[data-theme='light'] .card-elevated {
+  box-shadow:
+    0 4px 12px rgba(15, 23, 42, 0.04),
+    0 1px 2px rgba(15, 23, 42, 0.06);
+}
+
+html[data-theme='light'] .app-surface {
+  background: linear-gradient(180deg, #ffffff, #f8fafc);
+  box-shadow:
+    0 6px 16px rgba(15, 23, 42, 0.06),
+    0 1px 2px rgba(15, 23, 42, 0.04);
 }

@@ -157,8 +157,8 @@ export default function DashboardPage() {
       const todayLog = stepsRes.data[0]
       const minutes = Number(
         todayLog?.active_minutes ||
-          (Number(todayLog?.slow_minutes || 0) +
-            Number(todayLog?.brisk_minutes || 0)),
+          Number(todayLog?.slow_minutes || 0) +
+            Number(todayLog?.brisk_minutes || 0),
       )
       setActiveMinutes(Math.max(0, minutes || 0))
     } catch (error) {
@@ -174,7 +174,10 @@ export default function DashboardPage() {
       if (!authToken) return
 
       const today = getLocalDateKey()
-      const waterRes = await apiClient.get(`/api/metrics/water?date=${today}`, authToken)
+      const waterRes = await apiClient.get(
+        `/api/metrics/water?date=${today}`,
+        authToken,
+      )
       if (!waterRes.success) return
 
       const waterData = waterRes.data || {}
@@ -217,19 +220,17 @@ export default function DashboardPage() {
         }
 
         // Load primary dashboard data in parallel to reduce time-to-interactive.
-        const [
-          mealsRes,
-          goalsRes,
-          waterRes,
-          stepsRes,
-          workoutsRes,
-        ] = await Promise.all([
-          apiClient.get(`/api/nutrition/meals?date=${today}`, token),
-          apiClient.get('/api/metrics/goals/current', token),
-          apiClient.get(`/api/metrics/water?date=${today}`, token),
-          apiClient.get(`/api/metrics/steps?startDate=${today}&endDate=${today}`, token),
-          apiClient.get('/api/workouts?limit=30&is_template=false', token),
-        ])
+        const [mealsRes, goalsRes, waterRes, stepsRes, workoutsRes] =
+          await Promise.all([
+            apiClient.get(`/api/nutrition/meals?date=${today}`, token),
+            apiClient.get('/api/metrics/goals/current', token),
+            apiClient.get(`/api/metrics/water?date=${today}`, token),
+            apiClient.get(
+              `/api/metrics/steps?startDate=${today}&endDate=${today}`,
+              token,
+            ),
+            apiClient.get('/api/workouts?limit=30&is_template=false', token),
+          ])
 
         // Fetch today's meals and calculate nutrition
         let nextNutrition: DailyNutrition = DEFAULT_NUTRITION
@@ -282,8 +283,8 @@ export default function DashboardPage() {
           const todayLog = stepsRes.data[0]
           const minutes = Number(
             todayLog?.active_minutes ||
-              (Number(todayLog?.slow_minutes || 0) +
-                Number(todayLog?.brisk_minutes || 0)),
+              Number(todayLog?.slow_minutes || 0) +
+                Number(todayLog?.brisk_minutes || 0),
           )
           nextActiveMinutes = Math.max(0, minutes || 0)
           setActiveMinutes(nextActiveMinutes)
@@ -478,7 +479,10 @@ export default function DashboardPage() {
 
       const start = new Date(workout.started_at)
       const end = workout.ended_at ? new Date(workout.ended_at) : now
-      if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) {
+      if (
+        !Number.isFinite(start.getTime()) ||
+        !Number.isFinite(end.getTime())
+      ) {
         return
       }
 
@@ -551,9 +555,14 @@ export default function DashboardPage() {
               setDailySteps(updatedSteps)
               void stepTracker
                 .getTodayActivityStats()
-                .then((s) => setActiveMinutes(Math.max(0, s.activeMinutes || 0)))
+                .then((s) =>
+                  setActiveMinutes(Math.max(0, s.activeMinutes || 0)),
+                )
                 .catch((e) =>
-                  console.error('[Dashboard] Failed to refresh active minutes:', e),
+                  console.error(
+                    '[Dashboard] Failed to refresh active minutes:',
+                    e,
+                  ),
                 )
             })
             console.log('[Dashboard] Real-time tracking started')
@@ -585,20 +594,26 @@ export default function DashboardPage() {
 
       try {
         const { App } = await import('@capacitor/app')
-        appListener = await App.addListener('appStateChange', async ({ isActive }) => {
-          if (!isActive) return
+        appListener = await App.addListener(
+          'appStateChange',
+          async ({ isActive }) => {
+            if (!isActive) return
 
-          try {
-            await stepTracker.syncOfflineAndHistoricalSteps()
-            const steps = await stepTracker.getTodaySteps()
-            const stats = await stepTracker.getTodayActivityStats()
-            setDailySteps(steps)
-            setActiveMinutes(Math.max(0, stats.activeMinutes || 0))
-            await stepTracker.syncSteps(steps)
-          } catch (error) {
-            console.error('[Dashboard] Error refreshing steps on resume:', error)
-          }
-        })
+            try {
+              await stepTracker.syncOfflineAndHistoricalSteps()
+              const steps = await stepTracker.getTodaySteps()
+              const stats = await stepTracker.getTodayActivityStats()
+              setDailySteps(steps)
+              setActiveMinutes(Math.max(0, stats.activeMinutes || 0))
+              await stepTracker.syncSteps(steps)
+            } catch (error) {
+              console.error(
+                '[Dashboard] Error refreshing steps on resume:',
+                error,
+              )
+            }
+          },
+        )
       } catch (error) {
         console.error('[Dashboard] Failed to set app resume listener:', error)
       }
@@ -621,32 +636,46 @@ export default function DashboardPage() {
         {loading && nutrition.calories === 0 ? (
           <DashboardCalorieSkeleton />
         ) : (
-          <div className='bg-gradient-to-br from-[#1a1f35] to-[#0d1b3e] border border-blue-500/20 rounded-3xl p-5 mb-4'>
-            <div className='flex items-center justify-between mb-4'>
+          <div className='app-surface border border-[color:var(--app-border)] rounded-3xl p-6 mb-4 transition-all duration-200 hover:shadow-sm'>
+            <div className='flex items-center justify-between mb-5'>
               <div>
-                <div className='text-[11px] text-gray-400 uppercase tracking-wider mb-1'>
+                {/* Label */}
+                <div className='text-[11px] app-muted uppercase tracking-wider font-medium mb-1'>
                   Today's Calories
                 </div>
-                <div className='text-[30px] font-extrabold text-white tracking-tight leading-none'>
+
+                {/* Main Number */}
+                <div className='text-[34px] font-extrabold text-[color:var(--app-text)] tracking-tight leading-none'>
                   {Math.round(nutrition.calories).toLocaleString()}
                 </div>
-                <div className='text-[13px] text-gray-400'>
+
+                {/* Sub Text */}
+                <div className='text-[13px] app-muted mt-1'>
                   of {goals.calories.toLocaleString()} kcal
                 </div>
               </div>
+
               <ProgressRing
                 percent={
                   goals.calories > 0
                     ? Math.round((nutrition.calories / goals.calories) * 100)
                     : 0
                 }
-                size={88}
-                stroke={7}
+                size={92}
+                stroke={8}
                 color='#3B82F6'
-                label={`${goals.calories > 0 ? Math.round((nutrition.calories / goals.calories) * 100) : 0}%`}
+                label={`${
+                  goals.calories > 0
+                    ? Math.round((nutrition.calories / goals.calories) * 100)
+                    : 0
+                }%`}
                 sublabel='kcal'
               />
             </div>
+
+            {/* Divider for better structure */}
+            <div className='h-px bg-[color:var(--app-border)] mb-4'></div>
+
             <div className='flex gap-4'>
               <MacroPill
                 label='Protein'
@@ -839,7 +868,7 @@ export default function DashboardPage() {
 
         {/* Recent Activity */}
         <div className='mb-4'>
-          <div className='text-[14px] font-bold text-white mb-3'>
+          <div className='text-[14px] font-bold text-[color:var(--app-text)] mb-3'>
             Recent Activity
           </div>
           {loading && nutrition.calories === 0 ? (
@@ -856,37 +885,37 @@ export default function DashboardPage() {
             recentActivity
               .slice(0, visibleRecentActivityCount)
               .map((item, index) => {
-              const iconByType: Record<RecentActivity['type'], string> = {
-                meal: 'utensils',
-                workout: 'dumbbell',
-                water: 'water',
-                weight: 'trending',
-                steps: 'activity',
-              }
-              const colorByType: Record<RecentActivity['type'], string> = {
-                meal: '#F59E0B',
-                workout: '#818CF8',
-                water: '#3B82F6',
-                weight: '#10B981',
-                steps: '#A855F7',
-              }
-              const icon = iconByType[item.type]
-              const color = colorByType[item.type]
+                const iconByType: Record<RecentActivity['type'], string> = {
+                  meal: 'utensils',
+                  workout: 'dumbbell',
+                  water: 'water',
+                  weight: 'trending',
+                  steps: 'activity',
+                }
+                const colorByType: Record<RecentActivity['type'], string> = {
+                  meal: '#F59E0B',
+                  workout: '#818CF8',
+                  water: '#3B82F6',
+                  weight: '#10B981',
+                  steps: '#A855F7',
+                }
+                const icon = iconByType[item.type]
+                const color = colorByType[item.type]
 
-              return (
-                <ItemCard
-                  key={`${item.type}-${item.timestamp}-${index}`}
-                  id={`${item.type}-${index}`}
-                  title={item.name}
-                  subtitle={item.description}
-                  metadata={item.metadata}
-                  secondaryMetadata={formatTimeAgo(item.timestamp)}
-                  icon={icon}
-                  iconColor={color}
-                  canEdit={false}
-                  canDelete={false}
-                />
-              )
+                return (
+                  <ItemCard
+                    key={`${item.type}-${item.timestamp}-${index}`}
+                    id={`${item.type}-${index}`}
+                    title={item.name}
+                    subtitle={item.description}
+                    metadata={item.metadata}
+                    secondaryMetadata={formatTimeAgo(item.timestamp)}
+                    icon={icon}
+                    iconColor={color}
+                    canEdit={false}
+                    canDelete={false}
+                  />
+                )
               })
           )}
           {recentActivity.length > visibleRecentActivityCount && (
@@ -897,15 +926,13 @@ export default function DashboardPage() {
                   (prev) => prev + RECENT_ACTIVITY_BATCH_SIZE,
                 )
               }
-              className='mt-3 w-full h-10 rounded-xl border border-white/10 bg-[#0B0D17] text-[13px] font-semibold text-gray-200 hover:text-white'
+              className='mt-3 w-full h-10 rounded-xl border border-white/10 bg-[#0B0D17] text-[13px] font-semibold text-[color:var(--app-text)] hover:text-white'
             >
               See more
             </button>
           )}
         </div>
       </div>
-
     </div>
   )
 }
-
