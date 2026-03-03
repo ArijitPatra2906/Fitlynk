@@ -126,6 +126,12 @@ const iconPaths: Record<string, React.ReactNode> = {
       <path d='M15.477 12.89L17 22l-5-3-5 3 1.523-9.11' />
     </>
   ),
+  crown: (
+    <>
+      <path d='M3 7l4.5 5L12 5l4.5 7L21 7l-2 12H5L3 7z' />
+      <path d='M5 19h14' />
+    </>
+  ),
   arrowLeft: (
     <>
       <line x1='19' y1='12' x2='5' y2='12' />

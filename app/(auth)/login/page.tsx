@@ -185,8 +185,8 @@ function LoginPageContent() {
   }
 
   return (
-    <div className='h-screen bg-[#0B0D17] overflow-y-auto'>
-      <div className='w-full max-w-md mx-auto px-6 py-8 space-y-6 pb-20'>
+    <div className='min-h-screen bg-[#0B0D17] flex items-center justify-center px-6 py-8'>
+      <div className='w-full max-w-md space-y-6'>
         {/* Header */}
         <div className='text-center'>
           <h1 className='text-[28px] font-extrabold text-white tracking-tight'>

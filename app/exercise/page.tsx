@@ -331,6 +331,24 @@ export default function ExercisePage() {
         </button>
       </div>
 
+      <Link
+        href='/steps'
+        className='mb-4 bg-[#131520] border border-white/10 rounded-2xl p-3.5 flex items-center justify-between'
+      >
+        <div className='flex items-center gap-3'>
+          <div className='w-10 h-10 rounded-xl bg-cyan-500/15 border border-cyan-400/20 flex items-center justify-center'>
+            <Icon name='activity' size={18} color='#22D3EE' />
+          </div>
+          <div>
+            <div className='text-[14px] font-bold text-white'>Steps Tracker</div>
+            <div className='text-[11px] text-gray-400'>
+              Goal, logs, and manual entry
+            </div>
+          </div>
+        </div>
+        <Icon name='chevronRight' size={16} color='#64748B' />
+      </Link>
+
       {/* Recent Workouts */}
       <div className='flex items-center justify-between mb-3'>
         <div className='text-[14px] font-bold text-white'>Recent Workouts</div>

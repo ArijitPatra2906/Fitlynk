@@ -21,7 +21,7 @@ export default function Home() {
         {/* Logo */}
         <div className='mb-6 relative'>
           <div className='w-20 h-20 rounded-3xl bg-gradient-to-br from-blue-500 to-green-500 flex items-center justify-center shadow-[0_0_60px_rgba(59,130,246,0.5)]'>
-            <Icon name='zap' size={36} color='white' strokeWidth={2.5} />
+            <Icon name='dumbbell' size={36} color='white' strokeWidth={2.5} />
           </div>
           <div className='absolute inset-[-8px] rounded-[32px] border border-blue-500/20 animate-pulse' />
         </div>

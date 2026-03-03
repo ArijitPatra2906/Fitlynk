@@ -14,6 +14,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   // Pages that should show the bottom navigation
   const pagesWithBottomNav = [
     '/dashboard',
+    '/steps',
     '/exercise',
     '/nutrition',
     '/progress',
@@ -34,6 +35,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   // Pages that need the full layout wrapper (header + content + nav)
   const pagesWithLayout = [
     '/dashboard',
+    '/steps',
     '/exercise',
     '/nutrition',
     '/progress',

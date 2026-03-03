@@ -18,15 +18,15 @@ export default function AuthLayout({
       const token = await getAuthToken()
 
       // For login and register pages
-      // if (pathname === '/login' || pathname === '/register') {
-      //   if (token) {
-      //     console.log(
-      //       '[Auth Layout] User already authenticated, redirecting to dashboard...',
-      //     )
-      //     router.push('/dashboard')
-      //   }
-      //   return
-      // }
+      if (pathname === '/login' || pathname === '/register') {
+        if (token) {
+          console.log(
+            '[Auth Layout] User already authenticated, redirecting to dashboard...',
+          )
+          router.push('/dashboard')
+        }
+        return
+      }
 
       // For onboarding pages
       if (pathname?.startsWith('/onboarding')) {

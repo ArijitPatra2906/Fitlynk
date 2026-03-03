@@ -3,6 +3,7 @@ export interface Goal {
   user_id: string
   goal_type: 'lose' | 'maintain' | 'gain'
   calorie_target: number
+  step_target?: number
   protein_g: number
   carbs_g: number
   fat_g: number

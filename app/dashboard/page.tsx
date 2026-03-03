@@ -6,7 +6,6 @@ import { Icon } from '@/components/ui/icon'
 import { BarChart } from '@/components/ui/bar-chart'
 import { ProgressRing } from '@/components/ui/progress-ring'
 import { MacroPill } from '@/components/ui/macro-pill'
-import { StepModal } from '@/components/dashboard/step-modal'
 import {
   DashboardCalorieSkeleton,
   DashboardMetricCardSkeleton,
@@ -70,9 +69,8 @@ const getMealTotals = (meal: any) => {
 export default function DashboardPage() {
   const router = useRouter()
   const [fabOpen, setFabOpen] = useState(false)
-  const [stepModalOpen, setStepModalOpen] = useState(false)
   const [dailySteps, setDailySteps] = useState(0)
-  const stepGoal = 10000
+  const [stepGoal, setStepGoal] = useState(10000)
 
   // Dynamic data states
   const [nutrition, setNutrition] = useState<DailyNutrition>({
@@ -163,6 +161,7 @@ export default function DashboardPage() {
             carbs: goalsRes.data.carbs_g || 280,
             fat: goalsRes.data.fat_g || 80,
           })
+          setStepGoal(goalsRes.data.step_target || 10000)
         }
 
         // Fetch water intake
@@ -396,6 +395,9 @@ export default function DashboardPage() {
           console.log('[Dashboard] Permission granted:', hasPermission)
 
           if (hasPermission) {
+            // Sync cached steps from in-app Android background service (if available).
+            await stepTracker.syncOfflineAndHistoricalSteps()
+
             console.log("[Dashboard] Getting today's steps...")
             // Get today's steps
             const steps = await stepTracker.getTodaySteps()
@@ -442,6 +444,7 @@ export default function DashboardPage() {
           if (!isActive) return
 
           try {
+            await stepTracker.syncOfflineAndHistoricalSteps()
             const steps = await stepTracker.getTodaySteps()
             setDailySteps(steps)
             await stepTracker.syncSteps(steps)
@@ -580,7 +583,7 @@ export default function DashboardPage() {
               {/* Steps Card */}
               <button
                 className='bg-[#131520] border border-white/5 rounded-2xl p-4 text-left w-full hover:border-purple-500/30 transition-colors'
-                onClick={() => setStepModalOpen(true)}
+                onClick={() => router.push('/steps')}
               >
                 <div className='flex items-center gap-2 mb-3'>
                   <div className='w-[34px] h-[34px] rounded-xl bg-purple-500/15 flex items-center justify-center'>
@@ -698,70 +701,44 @@ export default function DashboardPage() {
               icon: 'utensils',
               color: '#F59E0B',
               href: '/nutrition',
-              action: null,
             },
             {
               label: 'Log Workout',
               icon: 'dumbbell',
               color: '#818CF8',
               href: '/exercise',
-              action: null,
             },
             {
               label: 'Log Steps',
               icon: 'activity',
               color: '#A855F7',
-              href: null,
-              action: () => setStepModalOpen(true),
+              href: '/steps',
             },
             {
               label: 'Log Weight',
               icon: 'trending',
               color: '#10B981',
               href: '/progress',
-              action: null,
             },
-          ].map((item) =>
-            item.href ? (
-              <Link
-                key={item.label}
-                href={item.href}
-                onClick={() => setFabOpen(false)}
-                className='flex items-center gap-2.5 py-2.5 px-4 rounded-2xl bg-[#1a1f35] border shadow-[0_4px_24px_rgba(0,0,0,0.5)]'
-                style={{ borderColor: item.color + '33' }}
+          ].map((item) => (
+            <Link
+              key={item.label}
+              href={item.href}
+              onClick={() => setFabOpen(false)}
+              className='flex items-center gap-2.5 py-2.5 px-4 rounded-2xl bg-[#1a1f35] border shadow-[0_4px_24px_rgba(0,0,0,0.5)]'
+              style={{ borderColor: item.color + '33' }}
+            >
+              <span className='text-[13px] font-semibold text-white'>
+                {item.label}
+              </span>
+              <div
+                className='w-8 h-8 rounded-xl flex items-center justify-center'
+                style={{ backgroundColor: item.color + '22' }}
               >
-                <span className='text-[13px] font-semibold text-white'>
-                  {item.label}
-                </span>
-                <div
-                  className='w-8 h-8 rounded-xl flex items-center justify-center'
-                  style={{ backgroundColor: item.color + '22' }}
-                >
-                  <Icon name={item.icon} size={16} color={item.color} />
-                </div>
-              </Link>
-            ) : (
-              <button
-                key={item.label}
-                onClick={() => {
-                  if (item.action) item.action()
-                  setFabOpen(false)
-                }}
-                className='flex items-center gap-2.5 py-2.5 px-4 rounded-2xl bg-[#1a1f35] border shadow-[0_4px_24px_rgba(0,0,0,0.5)]'
-                style={{ borderColor: item.color + '33' }}
-              >
-                <span className='text-[13px] font-semibold text-white'>
-                  {item.label}
-                </span>
-                <div
-                  className='w-8 h-8 rounded-xl flex items-center justify-center'
-                  style={{ backgroundColor: item.color + '22' }}
-                >
-                  <Icon name={item.icon} size={16} color={item.color} />
-                </div>
-              </button>
-            ),
-          )}
+                <Icon name={item.icon} size={16} color={item.color} />
+              </div>
+            </Link>
+          ))}
         </div>
       )}
 
@@ -774,16 +751,6 @@ export default function DashboardPage() {
         <Icon name='plus' size={24} color='white' strokeWidth={2.5} />
       </button>
 
-      {/* Step Modal */}
-      <StepModal
-        isOpen={stepModalOpen}
-        onClose={() => setStepModalOpen(false)}
-        currentSteps={dailySteps}
-        onSave={async (steps) => {
-          setDailySteps(steps)
-          await stepTracker.syncSteps(steps)
-        }}
-      />
     </div>
   )
 }
