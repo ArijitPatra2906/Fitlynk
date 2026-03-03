@@ -86,12 +86,47 @@ export default function DashboardPage() {
     fat: 80,
   })
   const [waterIntake, setWaterIntake] = useState(0)
+  const [activeMinutes, setActiveMinutes] = useState(0)
+  const [workoutActiveMinutes, setWorkoutActiveMinutes] = useState(0)
   const [streak, setStreak] = useState(0)
   const [weeklyVolume, setWeeklyVolume] = useState<number[]>([
     0, 0, 0, 0, 0, 0, 0,
   ])
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
   const [loading, setLoading] = useState(true)
+
+  const getLocalDateKey = (date = new Date()) => {
+    const y = date.getFullYear()
+    const m = String(date.getMonth() + 1).padStart(2, '0')
+    const d = String(date.getDate()).padStart(2, '0')
+    return `${y}-${m}-${d}`
+  }
+
+  const refreshActiveMinutesFromBackend = async () => {
+    try {
+      const { getAuthToken } = await import('@/lib/auth/auth-token')
+      const { apiClient } = await import('@/lib/api/client')
+      const token = await getAuthToken()
+      if (!token) return
+
+      const today = getLocalDateKey()
+      const stepsRes = await apiClient.get(
+        `/api/metrics/steps?startDate=${today}&endDate=${today}`,
+        token,
+      )
+      if (!stepsRes.success || !Array.isArray(stepsRes.data)) return
+
+      const todayLog = stepsRes.data[0]
+      const minutes = Number(
+        todayLog?.active_minutes ||
+          (Number(todayLog?.slow_minutes || 0) +
+            Number(todayLog?.brisk_minutes || 0)),
+      )
+      setActiveMinutes(Math.max(0, minutes || 0))
+    } catch (error) {
+      console.error('[Dashboard] Failed to refresh active minutes:', error)
+    }
+  }
 
   // Fetch dashboard data
   useEffect(() => {
@@ -174,6 +209,8 @@ export default function DashboardPage() {
           setWaterIntake(waterData.total_ml || 0)
         }
 
+        await refreshActiveMinutesFromBackend()
+
         // Fetch recent workouts for streak calculation
         const workoutsRes = await apiClient.get(
           '/api/workouts?limit=30&is_template=false',
@@ -186,6 +223,7 @@ export default function DashboardPage() {
           const calculatedStreak = calculateStreak(workouts)
           setStreak(calculatedStreak)
           calculateWeeklyVolume(workouts)
+          setWorkoutActiveMinutes(calculateTodayWorkoutMinutes(workouts))
         }
 
         // Fetch recent activity (last 3 meals + workouts)
@@ -234,7 +272,7 @@ export default function DashboardPage() {
             const exerciseNames = workout.exercises
               .slice(0, 3)
               .map((e: any) => e.exercise_id?.name || 'Exercise')
-              .join(' · ')
+              .join(' | ')
             activities.push({
               type: 'workout',
               name: workout.name,
@@ -356,6 +394,33 @@ export default function DashboardPage() {
     setWeeklyVolume(volumeByDay)
   }
 
+  const calculateTodayWorkoutMinutes = (workouts: any[]): number => {
+    const now = new Date()
+    const dayStart = new Date(now)
+    dayStart.setHours(0, 0, 0, 0)
+    const dayEnd = new Date(dayStart)
+    dayEnd.setDate(dayEnd.getDate() + 1)
+
+    let totalMs = 0
+    workouts.forEach((workout: any) => {
+      if (!workout?.started_at) return
+
+      const start = new Date(workout.started_at)
+      const end = workout.ended_at ? new Date(workout.ended_at) : now
+      if (!Number.isFinite(start.getTime()) || !Number.isFinite(end.getTime())) {
+        return
+      }
+
+      const overlapStart = Math.max(start.getTime(), dayStart.getTime())
+      const overlapEnd = Math.min(end.getTime(), dayEnd.getTime())
+      if (overlapEnd > overlapStart) {
+        totalMs += overlapEnd - overlapStart
+      }
+    })
+
+    return Math.max(0, Math.round(totalMs / (1000 * 60)))
+  }
+
   // Format time ago
   const formatTimeAgo = (timestamp: string) => {
     console.log('[Dashboard] formatTimeAgo:', timestamp)
@@ -386,6 +451,7 @@ export default function DashboardPage() {
       if (savedSteps > 0) {
         setDailySteps(savedSteps)
       }
+      await refreshActiveMinutesFromBackend()
 
       if (stepTracker.isSupported()) {
         try {
@@ -401,8 +467,10 @@ export default function DashboardPage() {
             console.log("[Dashboard] Getting today's steps...")
             // Get today's steps
             const steps = await stepTracker.getTodaySteps()
+            const stats = await stepTracker.getTodayActivityStats()
             console.log('[Dashboard] Steps fetched:', steps)
             setDailySteps(steps)
+            setActiveMinutes(Math.max(0, stats.activeMinutes || 0))
             await stepTracker.syncSteps(steps)
 
             console.log('[Dashboard] Starting real-time tracking...')
@@ -410,6 +478,12 @@ export default function DashboardPage() {
             await stepTracker.startTracking((updatedSteps) => {
               console.log('[Dashboard] Step update received:', updatedSteps)
               setDailySteps(updatedSteps)
+              void stepTracker
+                .getTodayActivityStats()
+                .then((s) => setActiveMinutes(Math.max(0, s.activeMinutes || 0)))
+                .catch((e) =>
+                  console.error('[Dashboard] Failed to refresh active minutes:', e),
+                )
             })
             console.log('[Dashboard] Real-time tracking started')
           } else {
@@ -446,7 +520,9 @@ export default function DashboardPage() {
           try {
             await stepTracker.syncOfflineAndHistoricalSteps()
             const steps = await stepTracker.getTodaySteps()
+            const stats = await stepTracker.getTodayActivityStats()
             setDailySteps(steps)
+            setActiveMinutes(Math.max(0, stats.activeMinutes || 0))
             await stepTracker.syncSteps(steps)
           } catch (error) {
             console.error('[Dashboard] Error refreshing steps on resume:', error)
@@ -552,9 +628,7 @@ export default function DashboardPage() {
                     days
                   </span>
                 </div>
-                <div className='mt-2 text-[12px] text-red-400'>
-                  🔥 Keep it up!
-                </div>
+                <div className='mt-2 text-[12px] text-red-400'>Keep it up!</div>
               </div>
 
               {/* Water Card */}
@@ -576,7 +650,7 @@ export default function DashboardPage() {
                   </span>
                 </div>
                 <div className='mt-2 text-[12px] text-blue-400'>
-                  💧 Stay hydrated
+                  Stay hydrated
                 </div>
               </div>
 
@@ -623,15 +697,15 @@ export default function DashboardPage() {
                   </span>
                 </div>
                 <div className='flex items-baseline gap-1'>
-                  <div className='text-[32px] font-extrabold text-white leading-none'>
-                    0
+                  <div className='text-[24px] font-bold text-white leading-none'>
+                    {activeMinutes + workoutActiveMinutes}
                   </div>
-                  <span className='text-[14px] text-gray-400 font-medium'>
+                  <span className='text-[12px] text-gray-400 font-medium'>
                     min
                   </span>
                 </div>
-                <div className='mt-2 text-[12px] text-green-400'>
-                  ⚡ Get moving
+                <div className='mt-2 text-[14px] font-semibold text-green-400'>
+                  Steps {activeMinutes}m | Workout {workoutActiveMinutes}m
                 </div>
               </div>
             </>
@@ -754,3 +828,4 @@ export default function DashboardPage() {
     </div>
   )
 }
+

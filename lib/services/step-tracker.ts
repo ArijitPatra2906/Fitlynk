@@ -71,6 +71,13 @@ class StepTrackerService {
     return startDate.getTime();
   }
 
+  private getLocalDateKey(date = new Date()): string {
+    const y = date.getFullYear();
+    const m = String(date.getMonth() + 1).padStart(2, "0");
+    const d = String(date.getDate()).padStart(2, "0");
+    return `${y}-${m}-${d}`;
+  }
+
   private isAndroidNative(): boolean {
     return this.isNative && this.platform === "android";
   }
@@ -436,8 +443,11 @@ class StepTrackerService {
       const token = await getAuthToken();
       if (!token) return 0;
 
-      const today = new Date().toISOString().split("T")[0];
-      const res = await apiClient.get(`/api/metrics/steps?date=${today}`, token);
+      const today = this.getLocalDateKey();
+      const res = await apiClient.get(
+        `/api/metrics/steps?startDate=${today}&endDate=${today}`,
+        token
+      );
       if (!res.success) return 0;
 
       const logs = Array.isArray(res.data) ? res.data : [];

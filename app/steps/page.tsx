@@ -4,7 +4,11 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Icon } from '@/components/ui/icon'
 import { Pagination } from '@/components/ui/pagination'
-import { stepTracker, type StepActivityStats } from '@/lib/services/step-tracker'
+import { StepsPageSkeleton } from '@/components/ui/skeleton'
+import {
+  stepTracker,
+  type StepActivityStats,
+} from '@/lib/services/step-tracker'
 import { toast } from 'sonner'
 
 type StepFilter = 7 | 30
@@ -61,6 +65,17 @@ const buildDateRange = (days: number) => {
 
 const formatDayTitle = (isoDate: string) => {
   const d = new Date(isoDate)
+  const today = new Date()
+  today.setHours(0, 0, 0, 0)
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  const target = new Date(d)
+  target.setHours(0, 0, 0, 0)
+
+  if (target.getTime() === today.getTime()) return 'Today'
+  if (target.getTime() === yesterday.getTime()) return 'Yesterday'
+
   const weekday = d.toLocaleDateString(undefined, { weekday: 'short' })
   const month = d.toLocaleDateString(undefined, { month: 'short' })
   return `${weekday}, ${d.getDate()} ${month}`
@@ -86,6 +101,13 @@ const buildFallbackStats = (steps: number): StepActivityStats => {
     distanceKm,
     caloriesBurned,
   }
+}
+
+const mergePreferHigherSteps = (
+  primary: StepActivityStats,
+  secondary: StepActivityStats,
+): StepActivityStats => {
+  return secondary.steps > primary.steps ? secondary : primary
 }
 
 const percent = (part: number, total: number) => {
@@ -125,10 +147,16 @@ export default function StepsPage() {
 
   const progressPercent = useMemo(() => {
     if (stepGoal <= 0) return 0
-    return Math.max(0, Math.min(100, Math.round((todayStats.steps / stepGoal) * 100)))
+    return Math.max(
+      0,
+      Math.min(100, Math.round((todayStats.steps / stepGoal) * 100)),
+    )
   }, [todayStats.steps, stepGoal])
 
-  const slowPct = useMemo(() => percent(todayStats.slowSteps, todayStats.steps), [todayStats])
+  const slowPct = useMemo(
+    () => percent(todayStats.slowSteps, todayStats.steps),
+    [todayStats],
+  )
   const briskPct = useMemo(() => Math.max(0, 100 - slowPct), [slowPct])
 
   const fetchStepLogs = useCallback(
@@ -179,10 +207,16 @@ export default function StepsPage() {
           return
         }
 
-        const goalsRes = await apiClient.get('/api/metrics/goals/current', token)
-        const currentGoal = goalsRes.success && goalsRes.data ? goalsRes.data : null
+        const goalsRes = await apiClient.get(
+          '/api/metrics/goals/current',
+          token,
+        )
+        const currentGoal =
+          goalsRes.success && goalsRes.data ? goalsRes.data : null
 
-        const resolvedStepGoal = Number(currentGoal?.step_target || DEFAULT_STEP_GOAL)
+        const resolvedStepGoal = Number(
+          currentGoal?.step_target || DEFAULT_STEP_GOAL,
+        )
         setStepGoal(resolvedStepGoal)
         setGoalPayload({
           goal_type: currentGoal?.goal_type || 'maintain',
@@ -194,13 +228,15 @@ export default function StepsPage() {
           step_target: resolvedStepGoal,
         })
 
-        let stats = buildFallbackStats(await stepTracker.getTodayStepsFromBackend())
+        const backendToday = await stepTracker.getTodayStepsFromBackend()
+        let stats = buildFallbackStats(backendToday)
 
         if (stepTracker.isSupported()) {
           const hasPermission = await stepTracker.requestPermissions()
           if (hasPermission) {
             try {
-              stats = await stepTracker.getTodayActivityStats()
+              const deviceStats = await stepTracker.getTodayActivityStats()
+              stats = mergePreferHigherSteps(stats, deviceStats)
               await stepTracker.syncSteps(stats.steps)
             } catch (e) {
               console.error('[Steps] Failed to refresh from device:', e)
@@ -266,7 +302,6 @@ export default function StepsPage() {
       setGoalPayload((prev) => ({ ...prev, step_target: stepGoal }))
       toast.success('Step goal saved')
     } catch (e: any) {
-      setError(e.message || 'Failed to save step goal')
       toast.error(e.message || 'Failed to save step goal')
     } finally {
       setSavingGoal(false)
@@ -312,7 +347,6 @@ export default function StepsPage() {
       toast.success('Steps saved')
       await fetchStepLogs(token, filter, page)
     } catch (e: any) {
-      setError(e.message || 'Failed to save steps')
       toast.error(e.message || 'Failed to save steps')
     } finally {
       setSavingSteps(false)
@@ -323,19 +357,20 @@ export default function StepsPage() {
     try {
       setError('')
       if (!stepTracker.isSupported()) {
-        setError('Device step sensor is not available on this platform')
         toast.error('Device step sensor is not available on this platform')
         return
       }
 
       const hasPermission = await stepTracker.requestPermissions()
       if (!hasPermission) {
-        setError('Activity permission is required to sync device steps')
         toast.error('Activity permission is required to sync device steps')
         return
       }
 
-      const stats = await stepTracker.getTodayActivityStats()
+      const backendToday = await stepTracker.getTodayStepsFromBackend()
+      const backendStats = buildFallbackStats(backendToday)
+      const deviceStats = await stepTracker.getTodayActivityStats()
+      const stats = mergePreferHigherSteps(backendStats, deviceStats)
       await stepTracker.syncSteps(stats.steps)
       setTodayStats(stats)
       setManualSteps(String(stats.steps))
@@ -348,17 +383,16 @@ export default function StepsPage() {
 
       toast.success('Synced from device')
     } catch (e: any) {
-      setError(e.message || 'Failed to sync from device')
       toast.error(e.message || 'Failed to sync from device')
     }
   }
 
   return (
-    <div className='px-6 pt-4 pb-24'>
+    <>
       {loading ? (
-        <div className='text-gray-400 text-sm'>Loading step data...</div>
+        <StepsPageSkeleton />
       ) : (
-        <>
+        <div className='px-6 pt-4 pb-24'>
           {error && (
             <div className='mb-4 rounded-xl border px-4 py-2 text-sm bg-red-500/10 border-red-500 text-red-400'>
               {error}
@@ -398,17 +432,25 @@ export default function StepsPage() {
 
             <div className='flex items-end justify-between text-[16px] text-white font-semibold mt-[-2px]'>
               <div>
-                {todayStats.slowSteps.toLocaleString()} <span className='text-[13px] text-gray-300'>{slowPct}%</span>
+                {todayStats.slowSteps.toLocaleString()}{' '}
+                <span className='text-[13px] text-gray-300'>{slowPct}%</span>
               </div>
               <div>
-                {todayStats.briskSteps.toLocaleString()} <span className='text-[13px] text-gray-300'>{briskPct}%</span>
+                {todayStats.briskSteps.toLocaleString()}{' '}
+                <span className='text-[13px] text-gray-300'>{briskPct}%</span>
               </div>
             </div>
 
             <div className='w-full h-2 rounded-full overflow-hidden bg-[#1e2030] mt-2 mb-1'>
               <div className='h-full flex'>
-                <div className='h-full bg-[#818CF8]' style={{ width: `${slowPct}%` }} />
-                <div className='h-full bg-[#3B82F6]' style={{ width: `${briskPct}%` }} />
+                <div
+                  className='h-full bg-[#818CF8]'
+                  style={{ width: `${slowPct}%` }}
+                />
+                <div
+                  className='h-full bg-[#3B82F6]'
+                  style={{ width: `${briskPct}%` }}
+                />
               </div>
             </div>
 
@@ -462,14 +504,18 @@ export default function StepsPage() {
           </div>
 
           <div className='bg-[#131520] border border-white/10 rounded-2xl p-4 mb-4'>
-            <div className='text-[14px] text-white font-bold mb-3'>Log Today Steps</div>
+            <div className='text-[14px] text-white font-bold mb-3'>
+              Log Today Steps
+            </div>
             <div className='flex gap-2 mb-3'>
               {[1000, 2500, 5000].map((amount) => (
                 <button
                   key={amount}
                   type='button'
                   onClick={() =>
-                    setManualSteps(String((parseInt(manualSteps || '0', 10) || 0) + amount))
+                    setManualSteps(
+                      String((parseInt(manualSteps || '0', 10) || 0) + amount),
+                    )
                   }
                   className='flex-1 bg-[#1a1f35] border border-white/10 rounded-lg py-2 text-[12px] text-blue-300 font-semibold'
                 >
@@ -534,13 +580,18 @@ export default function StepsPage() {
           {logsLoading ? (
             <div className='text-gray-400 text-sm'>Loading logs...</div>
           ) : logs.length === 0 ? (
-            <div className='text-gray-400 text-sm'>No step logs in this range.</div>
+            <div className='text-gray-400 text-sm'>
+              No step logs in this range.
+            </div>
           ) : (
             <div className='space-y-2'>
               {logs.map((log) => {
                 const hitGoal = log.steps >= stepGoal
                 return (
-                  <div key={log._id} className='bg-[#131520] border border-white/10 rounded-xl p-3'>
+                  <div
+                    key={log._id}
+                    className='bg-[#131520] border border-white/10 rounded-xl p-3'
+                  >
                     <div className='flex items-center justify-between mb-1'>
                       <div className='text-[13px] text-white font-semibold'>
                         {formatDayTitle(log.date)}
@@ -553,7 +604,7 @@ export default function StepsPage() {
                       <div className='text-right'>
                         {hitGoal && (
                           <div className='flex justify-end mb-0.5'>
-                            <Icon name='crown' size={12} color='#F59E0B' />
+                            <Icon name='crown' size={15} color='#F59E0B' />
                           </div>
                         )}
                         <div className='text-[17px] text-white font-bold leading-none'>
@@ -564,13 +615,17 @@ export default function StepsPage() {
                     </div>
                     <div className='mt-2 pt-2 border-t border-white/5 grid grid-cols-3 gap-2 text-center'>
                       <div>
-                        <div className='text-[10px] text-gray-500'>Distance</div>
+                        <div className='text-[10px] text-gray-500'>
+                          Distance
+                        </div>
                         <div className='text-[12px] text-gray-200 font-semibold'>
                           {(log.distance_km || 0).toFixed(2)} km
                         </div>
                       </div>
                       <div>
-                        <div className='text-[10px] text-gray-500'>Calories</div>
+                        <div className='text-[10px] text-gray-500'>
+                          Calories
+                        </div>
                         <div className='text-[12px] text-gray-200 font-semibold'>
                           {Math.round(log.calories_burned || 0)} kcal
                         </div>
@@ -580,7 +635,11 @@ export default function StepsPage() {
                         <div className='text-[12px] text-gray-200 font-semibold'>
                           {Math.max(
                             0,
-                            Number(log.active_minutes || (Number(log.slow_minutes || 0) + Number(log.brisk_minutes || 0))),
+                            Number(
+                              log.active_minutes ||
+                                Number(log.slow_minutes || 0) +
+                                  Number(log.brisk_minutes || 0),
+                            ),
                           )}{' '}
                           min
                         </div>
@@ -602,8 +661,8 @@ export default function StepsPage() {
               onPageChange={setPage}
             />
           </div>
-        </>
+        </div>
       )}
-    </div>
+    </>
   )
 }

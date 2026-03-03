@@ -7,8 +7,7 @@ import Link from 'next/link'
 import { getAuthToken } from '@/lib/auth/auth-token'
 import { apiClient } from '@/lib/api/client'
 import {
-  ExerciseQuickActionSkeleton,
-  ExerciseTemplateSkeleton,
+  ExercisePageSkeleton,
 } from '@/components/ui/skeleton'
 import { Workout, Exercise } from '@/types'
 import { ItemCard } from '@/components/common/item-card'
@@ -261,19 +260,7 @@ export default function ExercisePage() {
   }
 
   if (loading) {
-    return (
-      <div className='px-6 pt-5 pb-4'>
-        <ExerciseQuickActionSkeleton />
-        <ExerciseQuickActionSkeleton />
-
-        <div className='text-[14px] font-bold text-white mb-3'>
-          My Templates
-        </div>
-        <ExerciseTemplateSkeleton />
-        <ExerciseTemplateSkeleton />
-        <ExerciseTemplateSkeleton />
-      </div>
-    )
+    return <ExercisePageSkeleton />
   }
 
   if (error) {
