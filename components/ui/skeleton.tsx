@@ -48,6 +48,70 @@ export function DashboardMetricCardSkeleton() {
   )
 }
 
+export function DashboardMetricsSkeleton() {
+  return (
+    <div className='grid grid-cols-2 gap-2.5 mb-4'>
+      <div className='bg-[#131520] border border-white/5 rounded-2xl p-3.5 min-h-[154px] flex flex-col'>
+        <div className='flex items-center gap-2 mb-2'>
+          <Skeleton className='w-7 h-7 rounded-lg' />
+          <Skeleton className='h-3 w-14' />
+        </div>
+        <div className='flex items-baseline gap-1'>
+          <Skeleton className='h-8 w-14' />
+          <Skeleton className='h-3 w-8' />
+        </div>
+        <div className='mt-auto pt-2 border-t border-white/5'>
+          <Skeleton className='h-3 w-20' />
+        </div>
+      </div>
+
+      <div className='bg-[#131520] border border-white/5 rounded-2xl p-3.5 min-h-[154px] flex flex-col'>
+        <div className='flex items-center gap-2 mb-2'>
+          <Skeleton className='w-7 h-7 rounded-lg' />
+          <Skeleton className='h-3 w-14' />
+        </div>
+        <div className='flex items-baseline gap-1'>
+          <Skeleton className='h-8 w-14' />
+          <Skeleton className='h-3 w-8' />
+        </div>
+        <div className='mt-auto pt-2.5 border-t border-white/5 grid grid-cols-2 gap-2'>
+          <Skeleton className='h-8 rounded-md' />
+          <Skeleton className='h-8 rounded-md' />
+        </div>
+      </div>
+
+      <div className='col-span-2 bg-[#131520] border border-white/5 rounded-2xl p-3.5 min-h-[128px] flex flex-col'>
+        <div className='flex items-center gap-2 mb-2'>
+          <Skeleton className='w-7 h-7 rounded-lg' />
+          <Skeleton className='h-3 w-14' />
+        </div>
+        <Skeleton className='h-8 w-24 mb-2' />
+        <div className='mt-auto pt-2.5 border-t border-white/5 w-full'>
+          <Skeleton className='h-1.5 w-full rounded-full mb-2' />
+          <Skeleton className='h-3 w-24 mb-1' />
+          <Skeleton className='h-3 w-40' />
+        </div>
+      </div>
+
+      <div className='col-span-2 bg-[#131520] border border-white/5 rounded-2xl p-3.5 min-h-[126px] flex flex-col'>
+        <div className='flex items-center gap-2 mb-2'>
+          <Skeleton className='w-7 h-7 rounded-lg' />
+          <Skeleton className='h-3 w-14' />
+        </div>
+        <div className='flex items-center justify-between mb-1'>
+          <Skeleton className='h-8 w-16' />
+          <Skeleton className='h-3 w-16' />
+        </div>
+        <Skeleton className='h-3 w-24 mb-2' />
+        <div className='mt-auto pt-3 border-t border-white/5'>
+          <Skeleton className='h-1.5 w-full rounded-full mb-2' />
+          <Skeleton className='h-3 w-44' />
+        </div>
+      </div>
+    </div>
+  )
+}
+
 export function DashboardActivitySkeleton() {
   return (
     <div className='flex items-center gap-3 py-3 border-b border-white/5'>
@@ -493,6 +557,60 @@ export function StepsPageSkeleton() {
             <Skeleton className='h-8 rounded-md' />
             <Skeleton className='h-8 rounded-md' />
           </div>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+export function WaterPageSkeleton() {
+  return (
+    <div className='px-6 pt-4 pb-24'>
+      <div className='bg-gradient-to-br from-[#1a1f35] to-[#102346] border border-blue-500/20 rounded-2xl p-4 mb-4'>
+        <Skeleton className='h-4 w-24 mb-2' />
+        <Skeleton className='h-10 w-24 mb-2' />
+        <Skeleton className='h-2 w-full rounded-full mb-2' />
+        <Skeleton className='h-3 w-32' />
+      </div>
+
+      <div className='bg-[#131520] border border-white/10 rounded-2xl p-4 mb-4'>
+        <div className='flex items-center justify-between mb-3'>
+          <Skeleton className='h-4 w-24' />
+          <Skeleton className='h-5 w-20' />
+        </div>
+        <Skeleton className='h-2 w-full rounded-lg mb-3' />
+        <Skeleton className='h-11 w-full rounded-xl' />
+      </div>
+
+      <div className='bg-[#131520] border border-white/10 rounded-2xl p-4 mb-4'>
+        <Skeleton className='h-4 w-28 mb-3' />
+        <div className='grid grid-cols-3 gap-2 mb-3'>
+          <Skeleton className='h-9 rounded-lg' />
+          <Skeleton className='h-9 rounded-lg' />
+          <Skeleton className='h-9 rounded-lg' />
+        </div>
+        <Skeleton className='h-12 w-full rounded-xl mb-3' />
+        <Skeleton className='h-11 w-full rounded-xl' />
+      </div>
+
+      <div className='flex items-center justify-between mb-3'>
+        <Skeleton className='h-5 w-20' />
+        <div className='flex gap-2'>
+          <Skeleton className='h-8 w-20 rounded-lg' />
+          <Skeleton className='h-8 w-20 rounded-lg' />
+        </div>
+      </div>
+
+      {[...Array(3)].map((_, i) => (
+        <div
+          key={i}
+          className='bg-[#131520] border border-white/10 rounded-xl p-3 mb-2'
+        >
+          <div className='flex items-center justify-between mb-1'>
+            <Skeleton className='h-4 w-24' />
+            <Skeleton className='h-5 w-14' />
+          </div>
+          <Skeleton className='h-3 w-28' />
         </div>
       ))}
     </div>

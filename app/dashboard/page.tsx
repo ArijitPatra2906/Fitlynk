@@ -8,12 +8,11 @@ import { ProgressRing } from '@/components/ui/progress-ring'
 import { MacroPill } from '@/components/ui/macro-pill'
 import {
   DashboardCalorieSkeleton,
-  DashboardMetricCardSkeleton,
+  DashboardMetricsSkeleton,
   DashboardActivitySkeleton,
 } from '@/components/ui/skeleton'
 import { ItemCard } from '@/components/common/item-card'
 import { stepTracker } from '@/lib/services/step-tracker'
-import Link from 'next/link'
 
 interface DailyNutrition {
   calories: number
@@ -68,9 +67,9 @@ const getMealTotals = (meal: any) => {
 
 export default function DashboardPage() {
   const router = useRouter()
-  const [fabOpen, setFabOpen] = useState(false)
   const [dailySteps, setDailySteps] = useState(0)
   const [stepGoal, setStepGoal] = useState(10000)
+  const [waterGoalMl, setWaterGoalMl] = useState(3000)
 
   // Dynamic data states
   const [nutrition, setNutrition] = useState<DailyNutrition>({
@@ -125,6 +124,24 @@ export default function DashboardPage() {
       setActiveMinutes(Math.max(0, minutes || 0))
     } catch (error) {
       console.error('[Dashboard] Failed to refresh active minutes:', error)
+    }
+  }
+
+  const refreshWaterIntakeFromBackend = async (token?: string) => {
+    try {
+      const { getAuthToken } = await import('@/lib/auth/auth-token')
+      const { apiClient } = await import('@/lib/api/client')
+      const authToken = token || (await getAuthToken())
+      if (!authToken) return
+
+      const today = getLocalDateKey()
+      const waterRes = await apiClient.get(`/api/metrics/water?date=${today}`, authToken)
+      if (!waterRes.success) return
+
+      const waterData = waterRes.data || {}
+      setWaterIntake(Number(waterData.total_ml || 0))
+    } catch (error) {
+      console.error('[Dashboard] Failed to refresh water intake:', error)
     }
   }
 
@@ -197,17 +214,10 @@ export default function DashboardPage() {
             fat: goalsRes.data.fat_g || 80,
           })
           setStepGoal(goalsRes.data.step_target || 10000)
+          setWaterGoalMl(goalsRes.data.water_target_ml || 3000)
         }
 
-        // Fetch water intake
-        const waterRes = await apiClient.get(
-          `/api/metrics/water?date=${today}`,
-          token,
-        )
-        if (waterRes.success) {
-          const waterData = waterRes.data || {}
-          setWaterIntake(waterData.total_ml || 0)
-        }
+        await refreshWaterIntakeFromBackend(token)
 
         await refreshActiveMinutesFromBackend()
 
@@ -600,117 +610,156 @@ export default function DashboardPage() {
         )}
 
         {/* Activity Metrics - 2x2 Grid */}
-        <div className='grid grid-cols-2 gap-3 mb-4'>
-          {loading && nutrition.calories === 0 ? (
-            <>
-              <DashboardMetricCardSkeleton />
-              <DashboardMetricCardSkeleton />
-              <DashboardMetricCardSkeleton />
-              <DashboardMetricCardSkeleton />
-            </>
-          ) : (
+        {loading && nutrition.calories === 0 ? (
+          <DashboardMetricsSkeleton />
+        ) : (
+          <div className='grid grid-cols-2 gap-2.5 mb-4'>
             <>
               {/* Streak Card */}
-              <div className='bg-[#131520] border border-white/5 rounded-2xl p-4'>
-                <div className='flex items-center gap-2 mb-3'>
-                  <div className='w-[34px] h-[34px] rounded-xl bg-red-500/15 flex items-center justify-center'>
-                    <Icon name='fire' size={18} color='#EF4444' />
+              <div className='order-1 bg-[#131520] border border-white/5 rounded-2xl p-3.5 min-h-[154px] flex flex-col'>
+                <div className='flex items-center gap-2 mb-2'>
+                  <div className='w-7 h-7 rounded-lg bg-red-500/15 flex items-center justify-center'>
+                    <Icon name='fire' size={14} color='#EF4444' />
                   </div>
-                  <span className='text-[12px] text-gray-400 font-semibold uppercase tracking-wide'>
+                  <span className='text-[11px] text-gray-400 font-semibold uppercase tracking-wide'>
                     Streak
                   </span>
                 </div>
                 <div className='flex items-baseline gap-1'>
-                  <div className='text-[32px] font-extrabold text-white leading-none'>
+                  <div className='text-[26px] font-extrabold text-white leading-none'>
                     {streak}
                   </div>
-                  <span className='text-[14px] text-gray-400 font-medium'>
+                  <span className='text-[12px] text-gray-400 font-medium'>
                     days
                   </span>
                 </div>
-                <div className='mt-2 text-[12px] text-red-400'>Keep it up!</div>
+                <div className='mt-auto pt-2 border-t border-white/5 text-[11px] text-gray-400'>
+                  Keep it up!
+                </div>
               </div>
 
               {/* Water Card */}
-              <div className='bg-[#131520] border border-white/5 rounded-2xl p-4'>
-                <div className='flex items-center gap-2 mb-3'>
-                  <div className='w-[34px] h-[34px] rounded-xl bg-blue-500/15 flex items-center justify-center'>
-                    <Icon name='water' size={18} color='#3B82F6' />
+              <button
+                type='button'
+                onClick={() => router.push('/water')}
+                className='order-4 col-span-2 bg-[#131520] border border-white/5 rounded-2xl p-3.5 min-h-[126px] flex flex-col text-left hover:border-blue-500/30 transition-colors'
+              >
+                <div className='flex items-center gap-2 mb-2'>
+                  <div className='w-7 h-7 rounded-lg bg-blue-500/15 flex items-center justify-center'>
+                    <Icon name='water' size={14} color='#3B82F6' />
                   </div>
-                  <span className='text-[12px] text-gray-400 font-semibold uppercase tracking-wide'>
+                  <span className='text-[11px] text-gray-400 font-semibold uppercase tracking-wide'>
                     Water
                   </span>
                 </div>
-                <div className='flex items-baseline gap-1'>
-                  <div className='text-[32px] font-extrabold text-white leading-none'>
-                    {(waterIntake / 1000).toFixed(1)}
+                <div className='flex items-center justify-between gap-3'>
+                  <div className='flex items-baseline gap-1'>
+                    <div className='text-[28px] font-extrabold text-white leading-none'>
+                      {(waterIntake / 1000).toFixed(1)}
+                    </div>
+                    <span className='text-[12px] text-gray-400 font-medium'>
+                      L
+                    </span>
                   </div>
-                  <span className='text-[14px] text-gray-400 font-medium'>
-                    L
-                  </span>
+                  <div className='text-[11px] text-blue-300 font-semibold'>
+                    Open logs
+                  </div>
                 </div>
-                <div className='mt-2 text-[12px] text-blue-400'>
-                  Stay hydrated
+                <div className='mt-1 text-[11px] text-gray-400'>
+                  / {(waterGoalMl / 1000).toFixed(1)} L goal
                 </div>
-              </div>
+                <div className='mt-auto pt-3 border-t border-white/5'>
+                  <div className='h-1.5 w-full bg-[#1e2030] rounded-full overflow-hidden'>
+                    <div
+                      className='h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full transition-all'
+                      style={{
+                        width: `${Math.min(100, (waterIntake / waterGoalMl) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                  <div className='mt-2 text-[11px] text-gray-400'>
+                    Tap to add water and view daily logs
+                  </div>
+                </div>
+              </button>
 
               {/* Steps Card */}
               <button
-                className='bg-[#131520] border border-white/5 rounded-2xl p-4 text-left w-full hover:border-purple-500/30 transition-colors'
+                className='order-3 col-span-2 bg-[#131520] border border-white/5 rounded-2xl p-3.5 text-left w-full hover:border-purple-500/30 transition-colors min-h-[128px] flex flex-col'
                 onClick={() => router.push('/steps')}
               >
-                <div className='flex items-center gap-2 mb-3'>
-                  <div className='w-[34px] h-[34px] rounded-xl bg-purple-500/15 flex items-center justify-center'>
-                    <Icon name='activity' size={18} color='#A855F7' />
+                <div className='flex items-center gap-2 mb-2'>
+                  <div className='w-7 h-7 rounded-lg bg-purple-500/15 flex items-center justify-center'>
+                    <Icon name='activity' size={14} color='#A855F7' />
                   </div>
-                  <span className='text-[12px] text-gray-400 font-semibold uppercase tracking-wide'>
+                  <span className='text-[11px] text-gray-400 font-semibold uppercase tracking-wide'>
                     Steps
                   </span>
                 </div>
-                <div className='flex items-baseline gap-1 mb-2'>
-                  <div className='text-[32px] font-extrabold text-white leading-none'>
+                <div className='flex items-baseline gap-1'>
+                  <div className='text-[30px] font-extrabold text-white leading-none'>
                     {dailySteps.toLocaleString()}
                   </div>
                 </div>
-                <div className='w-full h-1.5 bg-[#1e2030] rounded-full overflow-hidden'>
-                  <div
-                    className='h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all'
-                    style={{
-                      width: `${Math.min(100, (dailySteps / stepGoal) * 100)}%`,
-                    }}
-                  />
-                </div>
-                <div className='text-[11px] text-gray-400 mt-1.5'>
-                  {Math.round((dailySteps / stepGoal) * 100)}% of{' '}
-                  {stepGoal.toLocaleString()}
+                <div className='mt-auto pt-2.5 border-t border-white/5 w-full'>
+                  <div className='w-full h-1.5 bg-[#1e2030] rounded-full overflow-hidden'>
+                    <div
+                      className='h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all'
+                      style={{
+                        width: `${Math.min(100, (dailySteps / stepGoal) * 100)}%`,
+                      }}
+                    />
+                  </div>
+                  <div className='text-[11px] text-gray-400 mt-1.5'>
+                    {Math.round((dailySteps / stepGoal) * 100)}% of{' '}
+                    {stepGoal.toLocaleString()}
+                  </div>
+                  <div className='mt-2 text-[11px] text-gray-400'>
+                    Tap to add steps and view daily logs
+                  </div>
                 </div>
               </button>
 
               {/* Active Minutes Card */}
-              <div className='bg-[#131520] border border-white/5 rounded-2xl p-4'>
-                <div className='flex items-center gap-2 mb-3'>
-                  <div className='w-[34px] h-[34px] rounded-xl bg-green-500/15 flex items-center justify-center'>
-                    <Icon name='zap' size={18} color='#10B981' />
+              <div className='order-2 bg-[#131520] border border-white/5 rounded-2xl p-3.5 min-h-[154px] flex flex-col'>
+                <div className='flex items-center gap-2 mb-2'>
+                  <div className='w-7 h-7 rounded-lg bg-green-500/15 flex items-center justify-center'>
+                    <Icon name='zap' size={14} color='#10B981' />
                   </div>
-                  <span className='text-[12px] text-gray-400 font-semibold uppercase tracking-wide'>
+                  <span className='text-[11px] text-gray-400 font-semibold uppercase tracking-wide'>
                     Active
                   </span>
                 </div>
                 <div className='flex items-baseline gap-1'>
-                  <div className='text-[24px] font-bold text-white leading-none'>
+                  <div className='text-[28px] font-extrabold text-white leading-none'>
                     {activeMinutes + workoutActiveMinutes}
                   </div>
                   <span className='text-[12px] text-gray-400 font-medium'>
                     min
                   </span>
                 </div>
-                <div className='mt-2 text-[14px] font-semibold text-green-400'>
-                  Steps {activeMinutes}m | Workout {workoutActiveMinutes}m
+                <div className='mt-auto pt-2.5 border-t border-white/5 grid grid-cols-2 gap-2'>
+                  <div>
+                    <div className='text-[10px] uppercase tracking-wide text-gray-500'>
+                      Steps
+                    </div>
+                    <div className='text-[14px] font-semibold text-white'>
+                      {activeMinutes}m
+                    </div>
+                  </div>
+                  <div>
+                    <div className='text-[10px] uppercase tracking-wide text-gray-500'>
+                      Workout
+                    </div>
+                    <div className='text-[14px] font-semibold text-white'>
+                      {workoutActiveMinutes}m
+                    </div>
+                  </div>
                 </div>
               </div>
             </>
-          )}
-        </div>
+          </div>
+        )}
 
         {/* Weekly Volume */}
         <div className='bg-[#131520] border border-white/5 rounded-[22px] p-[18px] mb-4'>
@@ -765,65 +814,6 @@ export default function DashboardPage() {
           )}
         </div>
       </div>
-
-      {/* FAB - Positioned absolutely, outside scrollable area */}
-      {fabOpen && (
-        <div className='absolute bottom-28 right-6 flex flex-col gap-2.5 items-end z-20'>
-          {[
-            {
-              label: 'Log Meal',
-              icon: 'utensils',
-              color: '#F59E0B',
-              href: '/nutrition',
-            },
-            {
-              label: 'Log Workout',
-              icon: 'dumbbell',
-              color: '#818CF8',
-              href: '/exercise',
-            },
-            {
-              label: 'Log Steps',
-              icon: 'activity',
-              color: '#A855F7',
-              href: '/steps',
-            },
-            {
-              label: 'Log Weight',
-              icon: 'trending',
-              color: '#10B981',
-              href: '/progress',
-            },
-          ].map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              onClick={() => setFabOpen(false)}
-              className='flex items-center gap-2.5 py-2.5 px-4 rounded-2xl bg-[#1a1f35] border shadow-[0_4px_24px_rgba(0,0,0,0.5)]'
-              style={{ borderColor: item.color + '33' }}
-            >
-              <span className='text-[13px] font-semibold text-white'>
-                {item.label}
-              </span>
-              <div
-                className='w-8 h-8 rounded-xl flex items-center justify-center'
-                style={{ backgroundColor: item.color + '22' }}
-              >
-                <Icon name={item.icon} size={16} color={item.color} />
-              </div>
-            </Link>
-          ))}
-        </div>
-      )}
-
-      {/* FAB Button */}
-      <button
-        onClick={() => setFabOpen(!fabOpen)}
-        className='absolute bottom-6 right-6 w-[52px] h-[52px] rounded-[18px] bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-[0_8px_24px_rgba(59,130,246,0.5)] z-10 transition-transform'
-        style={{ transform: fabOpen ? 'rotate(45deg)' : 'rotate(0)' }}
-      >
-        <Icon name='plus' size={24} color='white' strokeWidth={2.5} />
-      </button>
 
     </div>
   )

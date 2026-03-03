@@ -4,6 +4,7 @@ export interface Goal {
   goal_type: 'lose' | 'maintain' | 'gain'
   calorie_target: number
   step_target?: number
+  water_target_ml?: number
   protein_g: number
   carbs_g: number
   fat_g: number

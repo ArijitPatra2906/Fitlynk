@@ -43,7 +43,7 @@ interface GoalPayload {
 }
 
 const DEFAULT_STEP_GOAL = 10000
-const PAGE_SIZE = 7
+const PAGE_SIZE = 10
 
 const getDateKey = (date: Date) => {
   const y = date.getFullYear()
@@ -79,6 +79,16 @@ const formatDayTitle = (isoDate: string) => {
   const weekday = d.toLocaleDateString(undefined, { weekday: 'short' })
   const month = d.toLocaleDateString(undefined, { month: 'short' })
   return `${weekday}, ${d.getDate()} ${month}`
+}
+
+interface StepDayGroup {
+  dayKey: string
+  steps: number
+  distance_km: number
+  calories_burned: number
+  active_minutes: number
+  source?: StepLogRow['source']
+  entries: StepLogRow[]
 }
 
 const buildFallbackStats = (steps: number): StepActivityStats => {
@@ -158,6 +168,42 @@ export default function StepsPage() {
     [todayStats],
   )
   const briskPct = useMemo(() => Math.max(0, 100 - slowPct), [slowPct])
+
+  const groupedLogs = useMemo<StepDayGroup[]>(() => {
+    const map = new Map<string, StepDayGroup>()
+
+    logs.forEach((log) => {
+      const d = new Date(log.date)
+      const dayKey = getDateKey(d)
+
+      const active =
+        Number(log.active_minutes || 0) ||
+        (Number(log.slow_minutes || 0) + Number(log.brisk_minutes || 0))
+
+      const existing = map.get(dayKey)
+      if (existing) {
+        existing.steps += Number(log.steps || 0)
+        existing.distance_km += Number(log.distance_km || 0)
+        existing.calories_burned += Number(log.calories_burned || 0)
+        existing.active_minutes += Number(active || 0)
+        existing.entries.push(log)
+      } else {
+        map.set(dayKey, {
+          dayKey,
+          steps: Number(log.steps || 0),
+          distance_km: Number(log.distance_km || 0),
+          calories_burned: Number(log.calories_burned || 0),
+          active_minutes: Number(active || 0),
+          source: log.source,
+          entries: [log],
+        })
+      }
+    })
+
+    return Array.from(map.values()).sort((a, b) =>
+      b.dayKey.localeCompare(a.dayKey),
+    )
+  }, [logs])
 
   const fetchStepLogs = useCallback(
     async (token: string, nextFilter: StepFilter, nextPage: number) => {
@@ -245,7 +291,7 @@ export default function StepsPage() {
         }
 
         setTodayStats(stats)
-        setManualSteps(String(stats.steps))
+        setManualSteps('0')
       } catch (e: any) {
         setError(e.message || 'Failed to load steps')
       } finally {
@@ -344,6 +390,7 @@ export default function StepsPage() {
       }
 
       setTodayStats(manualStats)
+      setManualSteps('0')
       toast.success('Steps saved')
       await fetchStepLogs(token, filter, page)
     } catch (e: any) {
@@ -373,7 +420,7 @@ export default function StepsPage() {
       const stats = mergePreferHigherSteps(backendStats, deviceStats)
       await stepTracker.syncSteps(stats.steps)
       setTodayStats(stats)
-      setManualSteps(String(stats.steps))
+      setManualSteps('0')
 
       const { getAuthToken } = await import('@/lib/auth/auth-token')
       const token = await getAuthToken()
@@ -512,12 +559,12 @@ export default function StepsPage() {
                 <button
                   key={amount}
                   type='button'
-                  onClick={() =>
-                    setManualSteps(
-                      String((parseInt(manualSteps || '0', 10) || 0) + amount),
-                    )
-                  }
-                  className='flex-1 bg-[#1a1f35] border border-white/10 rounded-lg py-2 text-[12px] text-blue-300 font-semibold'
+                  onClick={() => setManualSteps(String(amount))}
+                  className={`flex-1 border rounded-lg py-2 text-[12px] font-semibold ${
+                    Number(manualSteps) === amount
+                      ? 'bg-blue-600/20 border-blue-500/40 text-blue-200'
+                      : 'bg-[#1a1f35] border-white/10 text-blue-300'
+                  }`}
                 >
                   +{amount}
                 </button>
@@ -579,22 +626,22 @@ export default function StepsPage() {
 
           {logsLoading ? (
             <div className='text-gray-400 text-sm'>Loading logs...</div>
-          ) : logs.length === 0 ? (
+          ) : groupedLogs.length === 0 ? (
             <div className='text-gray-400 text-sm'>
               No step logs in this range.
             </div>
           ) : (
             <div className='space-y-2'>
-              {logs.map((log) => {
+              {groupedLogs.map((log) => {
                 const hitGoal = log.steps >= stepGoal
                 return (
                   <div
-                    key={log._id}
+                    key={log.dayKey}
                     className='bg-[#131520] border border-white/10 rounded-xl p-3'
                   >
                     <div className='flex items-center justify-between mb-1'>
                       <div className='text-[13px] text-white font-semibold'>
-                        {formatDayTitle(log.date)}
+                        {formatDayTitle(log.dayKey)}
                       </div>
                     </div>
                     <div className='flex items-center justify-between'>
@@ -633,15 +680,7 @@ export default function StepsPage() {
                       <div>
                         <div className='text-[10px] text-gray-500'>Time</div>
                         <div className='text-[12px] text-gray-200 font-semibold'>
-                          {Math.max(
-                            0,
-                            Number(
-                              log.active_minutes ||
-                                Number(log.slow_minutes || 0) +
-                                  Number(log.brisk_minutes || 0),
-                            ),
-                          )}{' '}
-                          min
+                          {Math.max(0, Number(log.active_minutes || 0))} min
                         </div>
                       </div>
                     </div>
@@ -651,16 +690,15 @@ export default function StepsPage() {
             </div>
           )}
 
-          <div className='mt-4 bg-[#131520] border border-white/10 rounded-xl px-3 py-2'>
-            <div className='text-[12px] text-gray-300 text-center'>
-              {pagination.total} logs
+          {pagination.total > PAGE_SIZE && (
+            <div className='mt-4'>
+              <Pagination
+                currentPage={page}
+                totalPages={pagination.totalPages}
+                onPageChange={setPage}
+              />
             </div>
-            <Pagination
-              currentPage={page}
-              totalPages={pagination.totalPages}
-              onPageChange={setPage}
-            />
-          </div>
+          )}
         </div>
       )}
     </>

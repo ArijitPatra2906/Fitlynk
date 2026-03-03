@@ -83,7 +83,13 @@ function WorkoutPageContent() {
 
     const interval = setInterval(syncElapsedTime, 1000)
     return () => clearInterval(interval)
-  }, [isTemplateMode, workout?.started_at, workout?.ended_at, isPaused, pausedAtMs])
+  }, [
+    isTemplateMode,
+    workout?.started_at,
+    workout?.ended_at,
+    isPaused,
+    pausedAtMs,
+  ])
 
   useEffect(() => {
     return () => {
@@ -331,6 +337,23 @@ function WorkoutPageContent() {
     }
 
     exercise.sets.push(newSet)
+    setExercises(updatedExercises)
+    debouncedSave(updatedExercises)
+  }
+
+  const removeSet = (exerciseIndex: number, setIndex: number) => {
+    const updatedExercises = [...exercises]
+    const targetExercise = updatedExercises[exerciseIndex]
+
+    if (!targetExercise || targetExercise.sets.length <= 1) return
+
+    targetExercise.sets = targetExercise.sets
+      .filter((_, idx) => idx !== setIndex)
+      .map((set, idx) => ({
+        ...set,
+        set_number: idx + 1,
+      }))
+
     setExercises(updatedExercises)
     debouncedSave(updatedExercises)
   }
@@ -867,27 +890,55 @@ function WorkoutPageContent() {
                 </div>
                 {/* Set Header */}
                 <div
-                  className={`grid gap-1.5 sm:gap-2 mb-2 ${isTemplateMode ? 'grid-cols-[40px_1fr_1fr]' : 'grid-cols-[40px_1fr_1fr_40px]'}`}
+                  className={`grid gap-1.5 sm:gap-2 mb-2 ${isTemplateMode ? 'grid-cols-[40px_1fr_1fr]' : 'grid-cols-[48px_1fr_1fr_36px]'}`}
                 >
-                  {['Set', 'Weight', 'Reps', '✓'].map((header) => (
-                    <div
-                      key={header}
-                      className={`text-[10px] text-gray-600 font-semibold text-center uppercase tracking-wider ${header === '✓' && isTemplateMode ? 'hidden' : ''}`}
-                    >
-                      {header}
-                    </div>
-                  ))}
+                  {['Set', 'Weight', 'Reps', 'Done'].map((header) => {
+                    if (isTemplateMode && header === 'Done') {
+                      return null
+                    }
+                    return (
+                      <div
+                        key={header}
+                        className='text-[10px] text-gray-600 font-semibold text-center uppercase tracking-wider'
+                      >
+                        {header}
+                      </div>
+                    )
+                  })}
                 </div>
                 {/* Sets */}
                 {exercise.sets.map((set, setIndex) => (
                   <div
                     key={setIndex}
-                    className={`grid gap-1.5 sm:gap-2 mb-1.5 items-center ${isTemplateMode ? 'grid-cols-[40px_1fr_1fr]' : 'grid-cols-[40px_1fr_1fr_40px]'}`}
+                    className={`grid gap-1.5 sm:gap-2 mb-1.5 items-center ${isTemplateMode ? 'grid-cols-[40px_1fr_1fr]' : 'grid-cols-[48px_1fr_1fr_36px]'}`}
                     style={{ opacity: set.completed_at ? 0.7 : 1 }}
                   >
                     {/* Set Number */}
-                    <div className='text-[12px] sm:text-[13px] text-gray-400 text-center'>
-                      {setIndex + 1}
+                    <div className='flex items-center justify-center gap-1'>
+                      {!isTemplateMode && (
+                        <button
+                          onClick={() => removeSet(exerciseIndex, setIndex)}
+                          disabled={
+                            isCompleted || isPaused || exercise.sets.length <= 1
+                          }
+                          className='h-[20px] w-[20px] flex items-center justify-center disabled:opacity-35'
+                          title={
+                            exercise.sets.length <= 1
+                              ? 'At least one set is required'
+                              : 'Remove set'
+                          }
+                        >
+                          <Icon
+                            name='minus-circle'
+                            size={18}
+                            color='#EF4444'
+                            strokeWidth={2.6}
+                          />
+                        </button>
+                      )}
+                      <span className='text-[12px] sm:text-[13px] text-gray-400'>
+                        {setIndex + 1}
+                      </span>
                     </div>
 
                     {/* Weight */}

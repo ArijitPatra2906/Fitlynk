@@ -42,6 +42,13 @@ const stepsConfig: AppBarConfig = {
   showAvatar: true,
 }
 
+const waterConfig: AppBarConfig = {
+  title: 'Water',
+  showBack: false,
+  showNotifications: true,
+  showAvatar: true,
+}
+
 const nutritionConfig: AppBarConfig = {
   title: 'Nutrition',
   showBack: false,
@@ -106,6 +113,7 @@ const exercisesConfig: AppBarConfig = {
 const routeConfigs: Record<string, AppBarConfig> = {
   '/dashboard': dashboardConfig,
   '/steps': stepsConfig,
+  '/water': waterConfig,
   '/exercise': exerciseConfig,
   '/nutrition': nutritionConfig,
   '/progress': progressConfig,

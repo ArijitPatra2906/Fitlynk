@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation'
 import { AppBar } from './app-bar'
 import { BottomNav } from './bottom-nav'
+import { GlobalQuickLogFab } from './global-quick-log-fab'
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -15,6 +16,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const pagesWithBottomNav = [
     '/dashboard',
     '/steps',
+    '/water',
     '/exercise',
     '/nutrition',
     '/progress',
@@ -32,10 +34,13 @@ export function AppLayout({ children }: AppLayoutProps) {
     '/food-search',
   ]
 
+  const authPages = ['/', '/login', '/register', '/onboarding']
+
   // Pages that need the full layout wrapper (header + content + nav)
   const pagesWithLayout = [
     '/dashboard',
     '/steps',
+    '/water',
     '/exercise',
     '/nutrition',
     '/progress',
@@ -52,6 +57,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   const shouldShowBottomNav = pagesWithBottomNav.includes(pathname)
   const shouldHideBottomNav = pagesWithoutBottomNav.includes(pathname)
   const showBottomNav = shouldShowBottomNav && !shouldHideBottomNav
+  const showGlobalFab = !authPages.includes(pathname)
 
   // Check if page needs layout wrapper
   const needsLayout = pagesWithLayout.includes(pathname)
@@ -66,6 +72,7 @@ export function AppLayout({ children }: AppLayoutProps) {
       <AppBar />
       <div className='flex-1 overflow-y-auto'>{children}</div>
       {showBottomNav && <BottomNav />}
+      {showGlobalFab && <GlobalQuickLogFab />}
     </div>
   )
 }
