@@ -68,7 +68,7 @@ export function AppLayout({ children }: AppLayoutProps) {
   }
 
   return (
-    <div className='flex flex-col h-screen bg-[#0B0D17] overflow-hidden'>
+    <div className='flex flex-col h-screen app-shell-bg overflow-hidden'>
       <AppBar />
       <div className='flex-1 overflow-y-auto'>{children}</div>
       {showBottomNav && <BottomNav />}

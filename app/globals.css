@@ -4,13 +4,25 @@
 
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 224 71.4% 4.1%;
+    --app-bg: #0b0d17;
+    --app-surface: #131520;
+    --app-surface-2: #1a1f35;
+    --app-border: rgba(255, 255, 255, 0.08);
+    --app-text: #f1f5f9;
+    --app-text-muted: #94a3b8;
+    --app-nav-bg: rgba(19, 21, 32, 0.95);
+    --skeleton-bg: rgba(148, 163, 184, 0.22);
   }
 
-  .dark {
-    --background: 224 71.4% 4.1%;
-    --foreground: 210 20% 98%;
+  html[data-theme='light'] {
+    --app-bg: #f4f7fb;
+    --app-surface: #ffffff;
+    --app-surface-2: #eef2f9;
+    --app-border: rgba(15, 23, 42, 0.12);
+    --app-text: #0f172a;
+    --app-text-muted: #475569;
+    --app-nav-bg: rgba(255, 255, 255, 0.96);
+    --skeleton-bg: rgba(15, 23, 42, 0.1);
   }
 
   * {
@@ -18,8 +30,8 @@
   }
 
   body {
-    background-color: #0B0D17;
-    color: #F1F5F9;
+    background-color: var(--app-bg);
+    color: var(--app-text);
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
     overflow: hidden;
     position: fixed;
@@ -28,6 +40,102 @@
     height: 100dvh; /* Dynamic viewport height for mobile */
     -webkit-overflow-scrolling: touch;
   }
+}
+
+.app-shell-bg {
+  background-color: var(--app-bg);
+  color: var(--app-text);
+}
+
+.app-surface {
+  background-color: var(--app-surface);
+  border-color: var(--app-border);
+}
+
+.app-muted {
+  color: var(--app-text-muted);
+}
+
+.app-nav-bg {
+  background-color: var(--app-nav-bg);
+  border-color: var(--app-border);
+}
+
+.skeleton-bg {
+  background-color: var(--skeleton-bg);
+}
+
+/* Light-mode overrides for existing hardcoded utility classes used across pages */
+html[data-theme='light'] .bg-\[\#0B0D17\] {
+  background-color: var(--app-bg) !important;
+}
+
+html[data-theme='light'] .bg-\[\#131520\],
+html[data-theme='light'] .bg-\[\#131520\]\/95 {
+  background-color: var(--app-surface) !important;
+}
+
+html[data-theme='light'] .bg-\[\#1a1f35\] {
+  background-color: var(--app-surface-2) !important;
+}
+
+html[data-theme='light'] .bg-\[\#0f1426\] {
+  background-color: #e7edf8 !important;
+}
+
+/* Convert dark hero gradients to light gradients in light mode */
+html[data-theme='light'] .from-\[\#1a1f35\],
+html[data-theme='light'] .from-\[\#0d1b3e\] {
+  --tw-gradient-from: #eaf0fb var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: rgb(234 240 251 / 0) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+html[data-theme='light'] .to-\[\#0d1b3e\],
+html[data-theme='light'] .to-\[\#102346\],
+html[data-theme='light'] .to-\[\#1a1f35\],
+html[data-theme='light'] .to-\[\#0B0D17\] {
+  --tw-gradient-to: #dfe8f7 var(--tw-gradient-to-position) !important;
+}
+
+/* Scope text overrides to light surfaces only. Do not force dark text globally,
+   otherwise text becomes unreadable on intentionally dark/gradient cards. */
+html[data-theme='light'] .bg-\[\#131520\] .text-white,
+html[data-theme='light'] .bg-\[\#131520\]\/95 .text-white,
+html[data-theme='light'] .bg-\[\#1a1f35\] .text-white,
+html[data-theme='light'] .bg-\[\#0f1426\] .text-white {
+  color: var(--app-text) !important;
+}
+
+html[data-theme='light'] .bg-\[\#131520\] .text-gray-400,
+html[data-theme='light'] .bg-\[\#131520\] .text-gray-500,
+html[data-theme='light'] .bg-\[\#131520\] .text-gray-600,
+html[data-theme='light'] .bg-\[\#131520\]\/95 .text-gray-400,
+html[data-theme='light'] .bg-\[\#131520\]\/95 .text-gray-500,
+html[data-theme='light'] .bg-\[\#131520\]\/95 .text-gray-600,
+html[data-theme='light'] .bg-\[\#1a1f35\] .text-gray-400,
+html[data-theme='light'] .bg-\[\#1a1f35\] .text-gray-500,
+html[data-theme='light'] .bg-\[\#1a1f35\] .text-gray-600,
+html[data-theme='light'] .bg-\[\#0f1426\] .text-gray-400,
+html[data-theme='light'] .bg-\[\#0f1426\] .text-gray-500,
+html[data-theme='light'] .bg-\[\#0f1426\] .text-gray-600 {
+  color: var(--app-text-muted) !important;
+}
+
+/* Keep readable text on cards that intentionally remain dark-ish after theme transforms */
+html[data-theme='light'] .bg-gradient-to-br .text-gray-400,
+html[data-theme='light'] .bg-gradient-to-b .text-gray-400 {
+  color: #475569 !important;
+}
+
+html[data-theme='light'] .bg-gradient-to-br .text-gray-500,
+html[data-theme='light'] .bg-gradient-to-b .text-gray-500 {
+  color: #64748b !important;
+}
+
+html[data-theme='light'] .border-white\/5,
+html[data-theme='light'] .border-white\/10 {
+  border-color: var(--app-border) !important;
 }
 
 /* Safe Area Support for Notches */

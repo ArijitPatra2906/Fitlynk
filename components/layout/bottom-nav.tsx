@@ -30,7 +30,7 @@ export function BottomNav() {
   }
 
   return (
-    <div className='flex-shrink-0 bg-[#131520]/95 backdrop-blur-xl border-t border-white/5 py-2 pb-safe flex safe-area-bottom'>
+    <div className='flex-shrink-0 app-nav-bg backdrop-blur-xl border-t py-2 pb-safe flex safe-area-bottom'>
       {tabs.map((tab) => {
         const isActive = isTabActive(tab.href, tab.id)
         return (
@@ -38,7 +38,7 @@ export function BottomNav() {
             key={tab.id}
             href={tab.href}
             className={`flex-1 flex flex-col items-center gap-1 py-1 transition-colors ${
-              isActive ? 'text-blue-500' : 'text-gray-500'
+              isActive ? 'text-blue-500' : 'app-muted'
             }`}
           >
             <Icon name={tab.icon} size={22} />

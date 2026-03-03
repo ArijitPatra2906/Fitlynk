@@ -134,12 +134,18 @@ export function AppBar() {
   const [userAvatar, setUserAvatar] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
+  const withCacheBuster = (url?: string | null, updatedAt?: string) => {
+    if (!url) return null
+    const sep = url.includes('?') ? '&' : '?'
+    const v = updatedAt ? new Date(updatedAt).getTime() : Date.now()
+    return `${url}${sep}v=${v}`
+  }
+
   // Set greeting and fetch user data on client side only
   useEffect(() => {
     setGreeting(getGreeting())
     setMounted(true)
 
-    // Fetch user data
     const fetchUser = async () => {
       try {
         const { getAuthToken } = await import('@/lib/auth/auth-token')
@@ -154,7 +160,9 @@ export function AppBar() {
         const response = await apiClient.get('/api/auth/me', token)
         if (response.success && response.data) {
           setUserName(response.data.name?.split(' ')[0] || 'User')
-          setUserAvatar(response.data.avatar_url || null)
+          setUserAvatar(
+            withCacheBuster(response.data.avatar_url, response.data.updated_at),
+          )
         }
       } catch (error) {
         console.error('[AppBar] Failed to fetch user data:', error)
@@ -163,7 +171,25 @@ export function AppBar() {
       }
     }
 
+    const onProfileUpdated = (event: Event) => {
+      const detail = (event as CustomEvent).detail || {}
+      if (typeof detail.name === 'string' && detail.name.trim()) {
+        setUserName(detail.name.split(' ')[0] || 'User')
+      }
+      if (typeof detail.avatar_url === 'string') {
+        setUserAvatar(withCacheBuster(detail.avatar_url, detail.updated_at))
+      }
+    }
+
+    window.addEventListener('profile:updated', onProfileUpdated as EventListener)
     fetchUser()
+
+    return () => {
+      window.removeEventListener(
+        'profile:updated',
+        onProfileUpdated as EventListener,
+      )
+    }
   }, [])
 
   // Don't show app bar on auth pages and workout (workout has custom header with timer)
@@ -196,7 +222,7 @@ export function AppBar() {
   }
 
   return (
-    <div className='flex-shrink-0 px-6 pt-safe pb-3 flex items-center justify-between bg-[#0B0D17] border-b border-white/5'>
+    <div className='flex-shrink-0 px-6 pt-safe pb-3 flex items-center justify-between app-shell-bg border-b' style={{ borderColor: 'var(--app-border)' }}>
       {/* Left Side */}
       <div className='flex items-center gap-3 flex-1'>
         {config.showBack && (
@@ -218,16 +244,17 @@ export function AppBar() {
             <>
               {config.subtitle && (
                 <div
-                  className='text-[13px] text-gray-400 mb-0.5'
+                  className='text-[13px] app-muted mb-0.5'
                   suppressHydrationWarning
                 >
                   {config.subtitle}
                 </div>
               )}
-              <div
-                className={`font-extrabold text-white tracking-tight ${
+                <div
+                className={`font-extrabold tracking-tight ${
                   config.subtitle ? 'text-[22px]' : 'text-[18px]'
                 }`}
+                style={{ color: 'var(--app-text)' }}
                 suppressHydrationWarning
               >
                 {config.title}
@@ -242,7 +269,7 @@ export function AppBar() {
         {config.actions}
 
         {config.showNotifications && (
-          <button className='w-10 h-10 rounded-xl bg-[#131520] border border-white/5 flex items-center justify-center'>
+          <button className='w-10 h-10 rounded-xl app-surface border flex items-center justify-center'>
             <Icon name='bell' size={18} color='#64748B' />
           </button>
         )}
@@ -250,20 +277,29 @@ export function AppBar() {
         {config.showAvatar &&
           (loading ? (
             <Skeleton className='w-10 h-10 rounded-xl' />
-          ) : userAvatar ? (
-            <img
-              src={userAvatar}
-              alt={userName || 'User'}
-              className='w-10 h-10 rounded-full object-cover'
-              suppressHydrationWarning
-            />
           ) : (
-            <div
-              className='w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-green-500 flex items-center justify-center text-base font-bold text-white'
-              suppressHydrationWarning
+            <button
+              type='button'
+              onClick={() => router.push('/profile')}
+              aria-label='Open profile'
+              className='rounded-xl'
             >
-              {userInitial}
-            </div>
+              {userAvatar ? (
+                <img
+                  src={userAvatar}
+                  alt={userName || 'User'}
+                  className='w-10 h-10 rounded-xl border border-white/15 object-cover'
+                  suppressHydrationWarning
+                />
+              ) : (
+                <div
+                  className='w-10 h-10 rounded-xl border border-white/15 bg-gradient-to-br from-blue-500 to-green-500 flex items-center justify-center text-base font-bold text-white'
+                  suppressHydrationWarning
+                >
+                  {userInitial}
+                </div>
+              )}
+            </button>
           ))}
       </div>
     </div>

@@ -5,6 +5,7 @@ import { AppLayout } from '@/components/layout/app-layout'
 import { AppUrlListener } from '@/components/auth/app-url-listener'
 import { GoogleAuthInit } from '@/components/auth/google-auth-init'
 import { Toaster } from '@/components/ui/toaster'
+import { ThemeInitializer } from '@/components/theme/theme-initializer'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -22,8 +23,9 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang='en' className='dark' suppressHydrationWarning>
+    <html lang='en' data-theme='dark' className='dark' suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
+        <ThemeInitializer />
         <GoogleAuthInit />
         <AppUrlListener />
         <Toaster />

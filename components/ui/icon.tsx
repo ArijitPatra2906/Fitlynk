@@ -120,6 +120,11 @@ const iconPaths: Record<string, React.ReactNode> = {
   star: (
     <polygon points='12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2' />
   ),
+  moon: (
+    <>
+      <path d='M21 12.79A9 9 0 1111.21 3c.16 0 .31 0 .47.02A7 7 0 0021 12.79z' />
+    </>
+  ),
   award: (
     <>
       <circle cx='12' cy='8' r='6' />
