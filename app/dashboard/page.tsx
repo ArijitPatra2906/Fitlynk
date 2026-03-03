@@ -29,12 +29,44 @@ interface Goals {
 }
 
 interface RecentActivity {
-  type: 'meal' | 'workout'
+  type: 'meal' | 'workout' | 'water' | 'weight' | 'steps'
   name: string
   description: string
-  calories: number
+  metadata: string
   timestamp: string
 }
+
+interface DashboardSnapshot {
+  dateKey: string
+  expiresAt: number
+  nutrition: DailyNutrition
+  goals: Goals
+  stepGoal: number
+  waterGoalMl: number
+  waterIntake: number
+  activeMinutes: number
+  workoutActiveMinutes: number
+  streak: number
+  weeklyVolume: number[]
+  recentActivity: RecentActivity[]
+}
+
+const DEFAULT_NUTRITION: DailyNutrition = {
+  calories: 0,
+  protein: 0,
+  carbs: 0,
+  fat: 0,
+}
+
+const DEFAULT_GOALS: Goals = {
+  calories: 2400,
+  protein: 180,
+  carbs: 280,
+  fat: 80,
+}
+
+const DASHBOARD_CACHE_TTL_MS = 45_000
+let dashboardSnapshotCache: DashboardSnapshot | null = null
 
 const normalizeList = (payload: any) => {
   if (Array.isArray(payload)) return payload
@@ -67,23 +99,14 @@ const getMealTotals = (meal: any) => {
 
 export default function DashboardPage() {
   const router = useRouter()
+  const RECENT_ACTIVITY_BATCH_SIZE = 5
   const [dailySteps, setDailySteps] = useState(0)
   const [stepGoal, setStepGoal] = useState(10000)
   const [waterGoalMl, setWaterGoalMl] = useState(3000)
 
   // Dynamic data states
-  const [nutrition, setNutrition] = useState<DailyNutrition>({
-    calories: 0,
-    protein: 0,
-    carbs: 0,
-    fat: 0,
-  })
-  const [goals, setGoals] = useState<Goals>({
-    calories: 2400,
-    protein: 180,
-    carbs: 280,
-    fat: 80,
-  })
+  const [nutrition, setNutrition] = useState<DailyNutrition>(DEFAULT_NUTRITION)
+  const [goals, setGoals] = useState<Goals>(DEFAULT_GOALS)
   const [waterIntake, setWaterIntake] = useState(0)
   const [activeMinutes, setActiveMinutes] = useState(0)
   const [workoutActiveMinutes, setWorkoutActiveMinutes] = useState(0)
@@ -92,6 +115,9 @@ export default function DashboardPage() {
     0, 0, 0, 0, 0, 0, 0,
   ])
   const [recentActivity, setRecentActivity] = useState<RecentActivity[]>([])
+  const [visibleRecentActivityCount, setVisibleRecentActivityCount] = useState(
+    RECENT_ACTIVITY_BATCH_SIZE,
+  )
   const [loading, setLoading] = useState(true)
 
   const getLocalDateKey = (date = new Date()) => {
@@ -101,17 +127,30 @@ export default function DashboardPage() {
     return `${y}-${m}-${d}`
   }
 
-  const refreshActiveMinutesFromBackend = async () => {
+  const applyDashboardSnapshot = (snapshot: DashboardSnapshot) => {
+    setNutrition(snapshot.nutrition)
+    setGoals(snapshot.goals)
+    setStepGoal(snapshot.stepGoal)
+    setWaterGoalMl(snapshot.waterGoalMl)
+    setWaterIntake(snapshot.waterIntake)
+    setActiveMinutes(snapshot.activeMinutes)
+    setWorkoutActiveMinutes(snapshot.workoutActiveMinutes)
+    setStreak(snapshot.streak)
+    setWeeklyVolume(snapshot.weeklyVolume)
+    setRecentActivity(snapshot.recentActivity)
+  }
+
+  const refreshActiveMinutesFromBackend = async (token?: string) => {
     try {
       const { getAuthToken } = await import('@/lib/auth/auth-token')
       const { apiClient } = await import('@/lib/api/client')
-      const token = await getAuthToken()
-      if (!token) return
+      const authToken = token || (await getAuthToken())
+      if (!authToken) return
 
       const today = getLocalDateKey()
       const stepsRes = await apiClient.get(
         `/api/metrics/steps?startDate=${today}&endDate=${today}`,
-        token,
+        authToken,
       )
       if (!stepsRes.success || !Array.isArray(stepsRes.data)) return
 
@@ -147,9 +186,9 @@ export default function DashboardPage() {
 
   // Fetch dashboard data
   useEffect(() => {
-    const fetchDashboardData = async () => {
+    const fetchDashboardData = async (silent = false) => {
       try {
-        setLoading(true)
+        if (!silent) setLoading(true)
         const today = new Date().toISOString().split('T')[0]
 
         // Get auth token
@@ -177,11 +216,23 @@ export default function DashboardPage() {
           }
         }
 
+        // Load primary dashboard data in parallel to reduce time-to-interactive.
+        const [
+          mealsRes,
+          goalsRes,
+          waterRes,
+          stepsRes,
+          workoutsRes,
+        ] = await Promise.all([
+          apiClient.get(`/api/nutrition/meals?date=${today}`, token),
+          apiClient.get('/api/metrics/goals/current', token),
+          apiClient.get(`/api/metrics/water?date=${today}`, token),
+          apiClient.get(`/api/metrics/steps?startDate=${today}&endDate=${today}`, token),
+          apiClient.get('/api/workouts?limit=30&is_template=false', token),
+        ])
+
         // Fetch today's meals and calculate nutrition
-        const mealsRes = await apiClient.get(
-          `/api/nutrition/meals?date=${today}`,
-          token,
-        )
+        let nextNutrition: DailyNutrition = DEFAULT_NUTRITION
         if (mealsRes.success) {
           const meals = normalizeList(mealsRes.data)
           // Calculate daily totals
@@ -197,117 +248,127 @@ export default function DashboardPage() {
             { calories: 0, protein: 0, carbs: 0, fat: 0 },
           )
 
+          nextNutrition = dailyNutrition
           setNutrition(dailyNutrition)
         }
 
         // Fetch current goals
-        const goalsRes = await apiClient.get(
-          '/api/metrics/goals/current',
-          token,
-        )
-
+        let nextGoals: Goals = DEFAULT_GOALS
+        let nextStepGoal = 10000
+        let nextWaterGoalMl = 3000
         if (goalsRes.success && goalsRes.data) {
-          setGoals({
+          nextGoals = {
             calories: goalsRes.data.calorie_target || 2400,
             protein: goalsRes.data.protein_g || 180,
             carbs: goalsRes.data.carbs_g || 280,
             fat: goalsRes.data.fat_g || 80,
-          })
-          setStepGoal(goalsRes.data.step_target || 10000)
-          setWaterGoalMl(goalsRes.data.water_target_ml || 3000)
+          }
+          nextStepGoal = goalsRes.data.step_target || 10000
+          nextWaterGoalMl = goalsRes.data.water_target_ml || 3000
+          setGoals(nextGoals)
+          setStepGoal(nextStepGoal)
+          setWaterGoalMl(nextWaterGoalMl)
         }
 
-        await refreshWaterIntakeFromBackend(token)
+        let nextWaterIntake = 0
+        if (waterRes.success) {
+          const waterData = waterRes.data || {}
+          nextWaterIntake = Number(waterData.total_ml || 0)
+          setWaterIntake(nextWaterIntake)
+        }
 
-        await refreshActiveMinutesFromBackend()
+        let nextActiveMinutes = 0
+        if (stepsRes.success && Array.isArray(stepsRes.data)) {
+          const todayLog = stepsRes.data[0]
+          const minutes = Number(
+            todayLog?.active_minutes ||
+              (Number(todayLog?.slow_minutes || 0) +
+                Number(todayLog?.brisk_minutes || 0)),
+          )
+          nextActiveMinutes = Math.max(0, minutes || 0)
+          setActiveMinutes(nextActiveMinutes)
+        }
 
         // Fetch recent workouts for streak calculation
-        const workoutsRes = await apiClient.get(
-          '/api/workouts?limit=30&is_template=false',
-          token,
-        )
+        let nextStreak = 0
+        let nextWeeklyVolume: number[] = [0, 0, 0, 0, 0, 0, 0]
+        let nextWorkoutActiveMinutes = 0
         if (workoutsRes.success) {
           const workouts = normalizeList(workoutsRes.data)
 
           // Calculate streak (consecutive days with workouts)
-          const calculatedStreak = calculateStreak(workouts)
-          setStreak(calculatedStreak)
-          calculateWeeklyVolume(workouts)
-          setWorkoutActiveMinutes(calculateTodayWorkoutMinutes(workouts))
+          nextStreak = calculateStreak(workouts)
+          nextWeeklyVolume = calculateWeeklyVolume(workouts)
+          nextWorkoutActiveMinutes = calculateTodayWorkoutMinutes(workouts)
+          setStreak(nextStreak)
+          setWeeklyVolume(nextWeeklyVolume)
+          setWorkoutActiveMinutes(nextWorkoutActiveMinutes)
         }
 
-        // Fetch recent activity (last 3 meals + workouts)
-        const recentMealsRes = await apiClient.get(
-          `/api/nutrition/meals?limit=5`,
-          token,
-        )
-        const recentWorkoutsRes = await apiClient.get(
-          `/api/workouts?limit=5&is_template=false&completed=true`,
-          token,
-        )
-
-        const activities: RecentActivity[] = []
-
-        if (recentMealsRes.success) {
-          const meals = normalizeList(recentMealsRes.data)
-          meals.forEach((meal: any) => {
-            const totals = getMealTotals(meal)
-            const totalCal = totals.calories
-            const itemNames =
-              meal.items?.length > 0
-                ? meal.items
-                    .slice(0, 2)
-                    .map((item: any) => item.food_name)
-                    .join(', ')
-                : meal.food_name ||
-                  meal.food_id?.name ||
-                  meal.meal_type ||
-                  'Meal'
-            activities.push({
-              type: 'meal',
-              name: meal.meal_type
-                ? meal.meal_type.charAt(0).toUpperCase() +
-                  meal.meal_type.slice(1)
-                : 'Meal',
-              description: itemNames,
-              calories: totalCal,
-              timestamp: meal.created_at || meal.updated_at || meal.date,
-            })
-          })
+        dashboardSnapshotCache = {
+          dateKey: getLocalDateKey(),
+          expiresAt: Date.now() + DASHBOARD_CACHE_TTL_MS,
+          nutrition: nextNutrition,
+          goals: nextGoals,
+          stepGoal: nextStepGoal,
+          waterGoalMl: nextWaterGoalMl,
+          waterIntake: nextWaterIntake,
+          activeMinutes: nextActiveMinutes,
+          workoutActiveMinutes: nextWorkoutActiveMinutes,
+          streak: nextStreak,
+          weeklyVolume: nextWeeklyVolume,
+          recentActivity: dashboardSnapshotCache?.recentActivity || [],
         }
 
-        if (recentWorkoutsRes.success) {
-          const workouts = normalizeList(recentWorkoutsRes.data)
-          workouts.forEach((workout: any) => {
-            const exerciseNames = workout.exercises
-              .slice(0, 3)
-              .map((e: any) => e.exercise_id?.name || 'Exercise')
-              .join(' | ')
-            activities.push({
-              type: 'workout',
-              name: workout.name,
-              description: exerciseNames,
-              calories: workout.calories || 0,
-              timestamp:
-                workout.ended_at || workout.updated_at || workout.started_at,
-            })
-          })
-        }
+        // Load recent activity in background so it doesn't block initial render.
+        void (async () => {
+          try {
+            const recentRes = await apiClient.get(
+              '/api/metrics/recent-activity?limit=50',
+              token,
+            )
+            if (!recentRes.success || !Array.isArray(recentRes.data)) {
+              return
+            }
 
-        // Sort strictly by event time and take latest 3.
-        activities.sort((a, b) => {
-          const aTime = new Date(a.timestamp).getTime()
-          const bTime = new Date(b.timestamp).getTime()
-          const safeATime = Number.isFinite(aTime) ? aTime : 0
-          const safeBTime = Number.isFinite(bTime) ? bTime : 0
-          return safeBTime - safeATime
-        })
-        setRecentActivity(activities.slice(0, 3))
+            const activities = recentRes.data.map((item: any) => ({
+              type: item.type as RecentActivity['type'],
+              name: item.name || 'Activity',
+              description: item.description || '',
+              metadata: item.metadata || '',
+              timestamp: item.timestamp || new Date().toISOString(),
+            }))
+
+            setRecentActivity(activities)
+            setVisibleRecentActivityCount(RECENT_ACTIVITY_BATCH_SIZE)
+            if (dashboardSnapshotCache) {
+              dashboardSnapshotCache = {
+                ...dashboardSnapshotCache,
+                recentActivity: activities,
+                expiresAt: Date.now() + DASHBOARD_CACHE_TTL_MS,
+              }
+            }
+          } catch (e) {
+            console.error('[Dashboard] Failed to load recent activity:', e)
+          }
+        })()
       } catch (error) {
         console.error('Error fetching dashboard data:', error)
       } finally {
-        setLoading(false)
+        if (!silent) setLoading(false)
       }
+    }
+
+    const todayKey = getLocalDateKey()
+    if (
+      dashboardSnapshotCache &&
+      dashboardSnapshotCache.dateKey === todayKey &&
+      dashboardSnapshotCache.expiresAt > Date.now()
+    ) {
+      applyDashboardSnapshot(dashboardSnapshotCache)
+      setLoading(false)
+      void fetchDashboardData(true)
+      return
     }
 
     fetchDashboardData()
@@ -360,7 +421,7 @@ export default function DashboardPage() {
     return streak
   }
 
-  const calculateWeeklyVolume = (workouts: any[]) => {
+  const calculateWeeklyVolume = (workouts: any[]): number[] => {
     // [Mon, Tue, Wed, Thu, Fri, Sat, Sun]
     const volumeByDay: number[] = [0, 0, 0, 0, 0, 0, 0]
     const today = new Date()
@@ -401,7 +462,7 @@ export default function DashboardPage() {
       }
     })
 
-    setWeeklyVolume(volumeByDay)
+    return volumeByDay
   }
 
   const calculateTodayWorkoutMinutes = (workouts: any[]): number => {
@@ -792,9 +853,25 @@ export default function DashboardPage() {
               No recent activity
             </div>
           ) : (
-            recentActivity.map((item, index) => {
-              const icon = item.type === 'meal' ? 'utensils' : 'dumbbell'
-              const color = item.type === 'meal' ? '#F59E0B' : '#818CF8'
+            recentActivity
+              .slice(0, visibleRecentActivityCount)
+              .map((item, index) => {
+              const iconByType: Record<RecentActivity['type'], string> = {
+                meal: 'utensils',
+                workout: 'dumbbell',
+                water: 'water',
+                weight: 'trending',
+                steps: 'activity',
+              }
+              const colorByType: Record<RecentActivity['type'], string> = {
+                meal: '#F59E0B',
+                workout: '#818CF8',
+                water: '#3B82F6',
+                weight: '#10B981',
+                steps: '#A855F7',
+              }
+              const icon = iconByType[item.type]
+              const color = colorByType[item.type]
 
               return (
                 <ItemCard
@@ -802,7 +879,7 @@ export default function DashboardPage() {
                   id={`${item.type}-${index}`}
                   title={item.name}
                   subtitle={item.description}
-                  metadata={`${item.calories} kcal`}
+                  metadata={item.metadata}
                   secondaryMetadata={formatTimeAgo(item.timestamp)}
                   icon={icon}
                   iconColor={color}
@@ -810,7 +887,20 @@ export default function DashboardPage() {
                   canDelete={false}
                 />
               )
-            })
+              })
+          )}
+          {recentActivity.length > visibleRecentActivityCount && (
+            <button
+              type='button'
+              onClick={() =>
+                setVisibleRecentActivityCount(
+                  (prev) => prev + RECENT_ACTIVITY_BATCH_SIZE,
+                )
+              }
+              className='mt-3 w-full h-10 rounded-xl border border-white/10 bg-[#0B0D17] text-[13px] font-semibold text-gray-200 hover:text-white'
+            >
+              See more
+            </button>
           )}
         </div>
       </div>

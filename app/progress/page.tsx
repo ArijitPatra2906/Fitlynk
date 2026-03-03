@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { Icon } from '@/components/ui/icon'
-import { Pagination } from '@/components/ui/pagination'
 import {
   ProgressChartSkeleton,
   ProgressPRsSkeleton,
@@ -80,7 +79,7 @@ const TABS: Array<{ id: ProgressTab; label: string }> = [
   { id: 'workouts', label: 'Workouts' },
   { id: 'photos', label: 'Photos' },
 ]
-const WEIGHT_LOG_PAGE_SIZE = 10
+const WEIGHT_LOG_PAGE_SIZE = 5
 
 const getDateKey = (date: Date) => {
   const y = date.getFullYear()
@@ -223,7 +222,7 @@ export default function ProgressPage() {
     }
   }
 
-  const refreshWeightLogs = async (nextPage: number) => {
+  const refreshWeightLogs = async (nextPage: number, append = false) => {
     setWeightLogsLoading(true)
     try {
       const { getAuthToken } = await import('@/lib/auth/auth-token')
@@ -247,7 +246,7 @@ export default function ProgressPage() {
           : []
       const pager = payload.pagination || {}
 
-      setWeightLogs(items)
+      setWeightLogs((prev) => (append ? [...prev, ...items] : items))
       setWeightLogPagination({
         total: toNumber(pager.total, items.length),
         totalPages: Math.max(1, toNumber(pager.totalPages, 1)),
@@ -274,11 +273,6 @@ export default function ProgressPage() {
 
     init()
   }, [])
-
-  useEffect(() => {
-    if (loading) return
-    void refreshWeightLogs(weightLogPage)
-  }, [weightLogPage])
 
   useEffect(() => {
     const refresh = async () => {
@@ -600,6 +594,17 @@ export default function ProgressPage() {
     return 'No weight change in selected period'
   }, [weightStats.delta])
 
+  const hasMoreWeightLogs =
+    weightLogs.length < weightLogPagination.total &&
+    weightLogPage < weightLogPagination.totalPages
+
+  const handleLoadMoreWeightLogs = async () => {
+    if (weightLogsLoading || !hasMoreWeightLogs) return
+    const nextPage = weightLogPage + 1
+    setWeightLogPage(nextPage)
+    await refreshWeightLogs(nextPage, true)
+  }
+
   return (
     <div className='px-6 pt-4 pb-20'>
       {loading ? (
@@ -899,13 +904,16 @@ export default function ProgressPage() {
                   </div>
                 )}
 
-                {weightLogPagination.total > WEIGHT_LOG_PAGE_SIZE && (
+                {hasMoreWeightLogs && (
                   <div className='mt-3'>
-                    <Pagination
-                      currentPage={weightLogPage}
-                      totalPages={weightLogPagination.totalPages}
-                      onPageChange={setWeightLogPage}
-                    />
+                    <button
+                      type='button'
+                      onClick={handleLoadMoreWeightLogs}
+                      disabled={weightLogsLoading}
+                      className='w-full h-10 rounded-xl border border-white/10 bg-[#0B0D17] text-[13px] font-semibold text-gray-200 hover:text-white disabled:opacity-50'
+                    >
+                      {weightLogsLoading ? 'Loading...' : 'See more'}
+                    </button>
                   </div>
                 )}
               </div>
