@@ -20,6 +20,10 @@ const config: CapacitorConfig = {
       serverClientId: '', // optional for now (required only if using backend verification)
       forceCodeForRefreshToken: true,
     },
+    FirebaseAuthentication: {
+      skipNativeAuth: false,
+      providers: ['google.com'],
+    },
   },
 
   ios: {

@@ -9,6 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
+    "@capacitor-firebase/authentication": "^8.1.0",
     "@capacitor/android": "^8.1.0",
     "@capacitor/app": "^8.0.1",
     "@capacitor/browser": "^8.0.1",
@@ -37,6 +38,7 @@
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
     "dotenv": "^17.3.1",
+    "firebase": "^12.10.0",
     "google-auth-library": "^10.6.1",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^0.575.0",

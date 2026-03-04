@@ -3,7 +3,6 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { AppLayout } from '@/components/layout/app-layout'
 import { AppUrlListener } from '@/components/auth/app-url-listener'
-import { GoogleAuthInit } from '@/components/auth/google-auth-init'
 import { Toaster } from '@/components/ui/toaster'
 import { ThemeInitializer } from '@/components/theme/theme-initializer'
 import { NotificationInitializer } from '@/components/notifications/notification-initializer'
@@ -28,7 +27,6 @@ export default function RootLayout({
     <html lang='en' data-theme='dark' className='dark' suppressHydrationWarning>
       <body className={inter.className} suppressHydrationWarning>
         <ThemeInitializer />
-        <GoogleAuthInit />
         <AppUrlListener />
         <NotificationInitializer />
         <StepTrackerInitializer />

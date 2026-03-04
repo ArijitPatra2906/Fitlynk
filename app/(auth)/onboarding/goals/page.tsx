@@ -380,8 +380,8 @@ export default function GoalsOnboardingPage() {
 
   if (loading) {
     return (
-      <div className='h-screen bg-[#0B0D17] overflow-y-auto px-6 py-8 pt-16'>
-        <div className='w-full max-w-md mx-auto'>
+      <div className='min-h-screen bg-[#0B0D17] flex items-center justify-center px-6 py-8'>
+        <div className='w-full max-w-md'>
           {/* Progress Indicator Skeleton */}
           <div className='flex items-center justify-center gap-2 mb-8'>
             <Skeleton className='h-1.5 w-8 rounded-full' />
@@ -418,8 +418,8 @@ export default function GoalsOnboardingPage() {
   }
 
   return (
-    <div className='h-screen bg-[#0B0D17] overflow-y-auto px-6 py-8 pt-16 pb-safe'>
-      <div className='w-full max-w-md mx-auto'>
+    <div className='min-h-screen bg-[#0B0D17] flex items-center justify-center px-6 py-8'>
+      <div className='w-full max-w-md'>
         {/* Progress Indicator */}
         <div className='flex items-center justify-center gap-2 mb-8'>
           {['goal', 'calories'].map((s, i) => (

@@ -4,51 +4,11 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Icon } from '@/components/ui/icon'
-import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth'
-import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google'
-import { isWeb } from '@/lib/utils/platform'
 
-function GoogleSignUpButton({
-  onClick,
-  onWebSignUp,
-  disabled,
-}: {
-  onClick: () => void
-  onWebSignUp: (response: any) => void
-  disabled: boolean
-}) {
-  const login = useGoogleLogin({
-    onSuccess: onWebSignUp,
-    onError: () => {
-      console.error('Google web sign-up failed')
-    },
-    flow: 'implicit',
-  })
-
-  const handleClick = () => {
-    if (isWeb()) {
-      login()
-    } else {
-      onClick()
-    }
-  }
-
-  return (
-    <button
-      type='button'
-      onClick={handleClick}
-      disabled={disabled}
-      className='w-full py-3.5 rounded-2xl border border-white/15 bg-[#131520] text-white text-[14px] font-semibold flex items-center justify-center gap-2 disabled:opacity-50'
-    >
-      <Icon name='google' size={18} />
-      Continue with Google
-    </button>
-  )
-}
-
-function RegisterPageContent() {
+export default function RegisterPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -107,87 +67,43 @@ function RegisterPageContent() {
   }
 
   const handleGoogleSignUp = async () => {
-    // Native platform - use Capacitor Google Auth
     try {
-      setLoading(true)
-      console.log('[Google Sign-Up Native] Starting native Google sign-up...')
+      setGoogleLoading(true)
+      setError('')
+      console.log('[Google Sign-Up] Starting Firebase Google sign-up...')
 
-      const user = await GoogleAuth.signIn()
+      const { firebaseAuthService } = await import('@/lib/firebase/auth-service')
+      const user = await firebaseAuthService.signInWithGoogle()
+
+      if (!user) {
+        throw new Error('No user returned from Firebase')
+      }
+
+      const idToken = await user.getIdToken()
 
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/google-mobile`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/google-firebase`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            idToken: user.authentication.idToken,
-          }),
+          body: JSON.stringify({ idToken: idToken }),
         },
       )
 
       const response = await res.json()
-      console.log('[Google Sign-Up Native] Response:', response)
 
       if (!res.ok) throw new Error(response.error || response.message)
 
-      // Extract data from the success response
       const { token, needsOnboarding } = response.data
-
-      console.log('[Google Sign-Up Native] Token received:', !!token)
-      console.log('[Google Sign-Up Native] Needs onboarding:', needsOnboarding)
 
       const { saveAuthToken } = await import('@/lib/auth/auth-token')
       await saveAuthToken(token)
 
-      console.log('[Google Sign-Up Native] Token saved, navigating...')
       router.push(needsOnboarding ? '/onboarding' : '/dashboard')
     } catch (err: any) {
-      console.error('[Google Sign-Up Native] Error:', err)
       setError(err.message || 'Google sign-up failed')
     } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleWebGoogleSignUp = async (tokenResponse: any) => {
-    try {
-      setLoading(true)
-      setError('')
-
-      console.log('[Google Sign-Up] Starting web Google sign-up...')
-
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/google-web`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            access_token: tokenResponse.access_token,
-          }),
-        },
-      )
-
-      const response = await res.json()
-      console.log('[Google Sign-Up] Response:', response)
-
-      if (!res.ok) throw new Error(response.error || 'Google sign-up failed')
-
-      // Extract data from the success response
-      const { token, needsOnboarding } = response.data
-
-      console.log('[Google Sign-Up] Token received:', !!token)
-      console.log('[Google Sign-Up] Needs onboarding:', needsOnboarding)
-
-      const { saveAuthToken } = await import('@/lib/auth/auth-token')
-      await saveAuthToken(token)
-
-      console.log('[Google Sign-Up] Token saved, navigating...')
-      router.push(needsOnboarding ? '/onboarding' : '/dashboard')
-    } catch (err: any) {
-      console.error('[Google Sign-Up] Error:', err)
-      setError(err.message || 'Google sign-up failed')
-    } finally {
-      setLoading(false)
+      setGoogleLoading(false)
     }
   }
 
@@ -205,11 +121,15 @@ function RegisterPageContent() {
         </div>
 
         {/* Google Sign Up Button */}
-        <GoogleSignUpButton
+        <button
+          type='button'
           onClick={handleGoogleSignUp}
-          onWebSignUp={handleWebGoogleSignUp}
-          disabled={loading}
-        />
+          disabled={googleLoading}
+          className='w-full py-3.5 rounded-2xl border border-white/15 bg-[#131520] text-white text-[14px] font-semibold flex items-center justify-center gap-2 disabled:opacity-50'
+        >
+          <Icon name='google' size={18} />
+          Continue with Google
+        </button>
 
         {/* Divider */}
         <div className='flex items-center gap-3'>
@@ -353,15 +273,5 @@ function RegisterPageContent() {
         </p>
       </div>
     </div>
-  )
-}
-
-export default function RegisterPage() {
-  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''
-
-  return (
-    <GoogleOAuthProvider clientId={clientId}>
-      <RegisterPageContent />
-    </GoogleOAuthProvider>
   )
 }
