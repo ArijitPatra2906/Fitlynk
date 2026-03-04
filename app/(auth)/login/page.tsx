@@ -4,38 +4,17 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Icon } from '@/components/ui/icon'
-import { GoogleAuth } from '@codetrix-studio/capacitor-google-auth'
-import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google'
-import { isWeb } from '@/lib/utils/platform'
 
 function GoogleLoginButton({
   onClick,
-  onWebLogin,
   disabled,
 }: {
   onClick: () => void
-  onWebLogin: (response: any) => void
   disabled: boolean
 }) {
-  const login = useGoogleLogin({
-    onSuccess: onWebLogin,
-    onError: () => {
-      console.error('Google web login failed')
-    },
-    flow: 'implicit',
-  })
-
-  const handleClick = () => {
-    if (isWeb()) {
-      login()
-    } else {
-      onClick()
-    }
-  }
-
   return (
     <button
-      onClick={handleClick}
+      onClick={onClick}
       type='button'
       disabled={disabled}
       className='w-full py-3.5 rounded-2xl border border-white/15 bg-[#131520] text-white text-[14px] font-semibold flex items-center justify-center gap-2 disabled:opacity-50'
@@ -51,6 +30,7 @@ function LoginPageContent() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [googleLoading, setGoogleLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
 
@@ -98,91 +78,69 @@ function LoginPageContent() {
   }
 
   const handleGoogleLogin = async () => {
-    if (isWeb()) {
-      // Web platform - use web Google OAuth
-      // This will be handled by the GoogleLoginButton component
-      return
-    }
-
-    // Native platform - use Capacitor Google Auth
     try {
-      console.log('[Google Login Native] Starting native Google login...')
-      const user = await GoogleAuth.signIn()
-
-      const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/google-mobile`,
-        {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            idToken: user.authentication.idToken,
-          }),
-        },
-      )
-
-      const response = await res.json()
-      console.log('[Google Login Native] Response:', response)
-
-      if (!res.ok) throw new Error(response.error || response.message)
-
-      // Extract data from the success response
-      const { token, needsOnboarding } = response.data
-
-      console.log('[Google Login Native] Token received:', !!token)
-      console.log('[Google Login Native] Needs onboarding:', needsOnboarding)
-
-      const { saveAuthToken } = await import('@/lib/auth/auth-token')
-      await saveAuthToken(token)
-
-      console.log('[Google Login Native] Token saved, navigating...')
-      router.push(needsOnboarding ? '/onboarding' : '/dashboard')
-    } catch (err: any) {
-      console.error('[Google Login Native] Error:', err)
-      setError(err.message || 'Google sign-in failed')
-    }
-  }
-
-  const handleWebGoogleLogin = async (tokenResponse: any) => {
-    try {
-      setLoading(true)
+      setGoogleLoading(true)
       setError('')
+      console.log('[Google Login] Starting Firebase Google login...')
 
-      console.log('[Google Login] Starting web Google login...')
+      // Use Firebase Authentication Service
+      const { firebaseAuthService } = await import('@/lib/firebase/auth-service')
+      const user = await firebaseAuthService.signInWithGoogle()
 
+      if (!user) {
+        throw new Error('No user returned from Firebase')
+      }
+
+      console.log('[Google Login] Firebase user:', user.email)
+      console.log('[Google Login] Getting ID token...')
+
+      // Get the Firebase ID token
+      const idToken = await user.getIdToken()
+      console.log('[Google Login] ID Token received:', !!idToken)
+
+      console.log('[Google Login] Sending to backend...')
       const res = await fetch(
-        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/google-web`,
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/google-firebase`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            access_token: tokenResponse.access_token,
+            idToken: idToken,
           }),
         },
       )
 
       const response = await res.json()
-      console.log('[Google Login] Response:', response)
+      console.log('[Google Login] Backend response:', response)
 
-      if (!res.ok) throw new Error(response.error || 'Google sign-in failed')
+      if (!res.ok) throw new Error(response.error || response.message || 'Authentication failed')
 
       // Extract data from the success response
       const { token, needsOnboarding } = response.data
 
-      console.log('[Google Login] Token received:', !!token)
+      if (!token) {
+        throw new Error('No auth token received from backend')
+      }
+
+      console.log('[Google Login] Token received, saving...')
       console.log('[Google Login] Needs onboarding:', needsOnboarding)
 
       const { saveAuthToken } = await import('@/lib/auth/auth-token')
       await saveAuthToken(token)
 
-      console.log('[Google Login] Token saved, navigating...')
+      console.log('[Google Login] Success! Navigating...')
       router.push(needsOnboarding ? '/onboarding' : '/dashboard')
     } catch (err: any) {
-      console.error('[Google Login] Error:', err)
+      console.error('[Google Login] Full error:', err)
+      console.error('[Google Login] Error name:', err.name)
+      console.error('[Google Login] Error message:', err.message)
+      console.error('[Google Login] Error code:', err.code)
       setError(err.message || 'Google sign-in failed')
     } finally {
-      setLoading(false)
+      setGoogleLoading(false)
     }
   }
+
 
   return (
     <div className='min-h-screen bg-[#0B0D17] flex items-center justify-center px-6 py-8'>
@@ -280,8 +238,7 @@ function LoginPageContent() {
         {/* OAuth Button */}
         <GoogleLoginButton
           onClick={handleGoogleLogin}
-          onWebLogin={handleWebGoogleLogin}
-          disabled={loading}
+          disabled={googleLoading}
         />
 
         {/* Sign Up Link */}
@@ -297,11 +254,5 @@ function LoginPageContent() {
 }
 
 export default function LoginPage() {
-  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || ''
-
-  return (
-    <GoogleOAuthProvider clientId={clientId}>
-      <LoginPageContent />
-    </GoogleOAuthProvider>
-  )
+  return <LoginPageContent />
 }
