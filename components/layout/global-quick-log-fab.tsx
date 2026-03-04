@@ -42,8 +42,8 @@ export function GlobalQuickLogFab() {
   if (HIDDEN_PATHS.includes(pathname)) return null
 
   const bottomOffset = WITH_BOTTOM_NAV.includes(pathname)
-    ? 'bottom-28'
-    : 'bottom-20'
+    ? 'bottom-36'
+    : 'bottom-28'
 
   return (
     <>
@@ -76,7 +76,7 @@ export function GlobalQuickLogFab() {
       <button
         type='button'
         onClick={() => setOpen((prev) => !prev)}
-        className={`fixed ${WITH_BOTTOM_NAV.includes(pathname) ? 'bottom-20' : 'bottom-10'} right-6 w-[40px] h-[40px] rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-[0_8px_20px_rgba(59,130,246,0.45)] z-40 transition-transform`}
+        className={`fixed ${WITH_BOTTOM_NAV.includes(pathname) ? 'bottom-28' : 'bottom-10'} right-6 w-[48px] h-[48px] rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-[0_8px_20px_rgba(59,130,246,0.45)] z-40 transition-transform`}
         style={{ transform: open ? 'rotate(45deg)' : 'rotate(0)' }}
         aria-label='Open quick log actions'
       >

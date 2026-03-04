@@ -246,37 +246,59 @@ class StepTrackerService {
     }
 
     try {
+      console.log("[StepTracker] getTodaySteps - Starting...");
       await this.ensurePermission();
       await this.startAndroidBackgroundService();
 
       console.log("[StepTracker] Checking if pedometer is available...");
       const available = await CapacitorPedometer.isAvailable();
-      console.log("[StepTracker] Pedometer available:", available);
+      console.log("[StepTracker] Pedometer available:", JSON.stringify(available));
 
       let sensorSteps = 0;
       if (available.stepCounting) {
+        // Start measurement updates if not already started
+        // This is crucial for Android - the sensor won't count unless updates are started
+        try {
+          await CapacitorPedometer.startMeasurementUpdates();
+          console.log("[StepTracker] Measurement updates started");
+        } catch (error) {
+          console.log("[StepTracker] Could not start measurement updates (may already be running):", error);
+        }
+
+        // Wait a moment for sensor to initialize
+        await new Promise(resolve => setTimeout(resolve, 100));
+
         const startOfToday = this.getStartOfTodayMs();
+        const now = Date.now();
+        console.log("[StepTracker] Requesting steps from:", new Date(startOfToday).toISOString(), "to:", new Date(now).toISOString());
 
         let result;
         try {
           result = await CapacitorPedometer.getMeasurement({
             start: startOfToday,
-            end: Date.now(),
+            end: now,
           });
+          console.log("[StepTracker] Raw measurement result:", JSON.stringify(result));
         } catch (error: any) {
+          console.error("[StepTracker] getMeasurement error:", error);
           const message = String(error?.message || error || "");
           if (this.platform === "android" && message.toLowerCase().includes("permission")) {
+            console.log("[StepTracker] Permission error detected, re-requesting...");
             await this.ensurePermission();
             result = await CapacitorPedometer.getMeasurement({
               start: startOfToday,
-              end: Date.now(),
+              end: now,
             });
+            console.log("[StepTracker] Retry measurement result:", JSON.stringify(result));
           } else {
             throw error;
           }
         }
 
         sensorSteps = Number(result?.numberOfSteps || 0);
+        console.log("[StepTracker] Parsed sensor steps:", sensorSteps);
+      } else {
+        console.warn("[StepTracker] Step counting NOT available on device!");
       }
 
       const cachedAndroidSteps = await this.getAndroidCachedTodaySteps();
@@ -284,6 +306,7 @@ class StepTrackerService {
       console.log("[StepTracker] Steps result - sensor:", sensorSteps, "cached:", cachedAndroidSteps, "using:", best);
       return best;
     } catch (error) {
+      console.error("[StepTracker] Error in getTodaySteps:", error);
       if (this.isAndroidNative()) {
         const cached = await this.getAndroidCachedTodaySteps();
         if (cached > 0) {

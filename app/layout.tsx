@@ -7,6 +7,7 @@ import { GoogleAuthInit } from '@/components/auth/google-auth-init'
 import { Toaster } from '@/components/ui/toaster'
 import { ThemeInitializer } from '@/components/theme/theme-initializer'
 import { NotificationInitializer } from '@/components/notifications/notification-initializer'
+import { StepTrackerInitializer } from '@/components/steps/step-tracker-initializer'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -30,6 +31,7 @@ export default function RootLayout({
         <GoogleAuthInit />
         <AppUrlListener />
         <NotificationInitializer />
+        <StepTrackerInitializer />
         <Toaster />
         <AppLayout>{children}</AppLayout>
       </body>

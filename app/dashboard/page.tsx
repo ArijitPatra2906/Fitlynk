@@ -516,85 +516,56 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
-    // Initialize step tracking when component mounts
-    const initStepTracking = async () => {
-      console.log('[Dashboard] Checking if step tracker is supported...')
-      console.log('[Dashboard] isSupported:', stepTracker.isSupported())
+    // Load steps data (tracking is already started by StepTrackerInitializer)
+    const loadStepsData = async () => {
+      console.log('[Dashboard] Loading steps data...')
 
-      // Always hydrate from backend first (historical source of truth).
+      // Load steps from backend first (historical source of truth)
       const savedSteps = await stepTracker.getTodayStepsFromBackend()
       console.log('[Dashboard] Backend steps:', savedSteps)
       setDailySteps(savedSteps)
       await refreshActiveMinutesFromBackend()
 
+      // Get current steps from device (sensor is already running)
       if (stepTracker.isSupported()) {
         try {
-          console.log('[Dashboard] Requesting permissions...')
-          // Request permissions
-          const hasPermission = await stepTracker.requestPermissions()
-          console.log('[Dashboard] Permission granted:', hasPermission)
+          const deviceSteps = await stepTracker.getTodaySteps()
+          const stats = await stepTracker.getTodayActivityStats()
+          console.log('[Dashboard] Device steps:', deviceSteps, 'Backend steps:', savedSteps)
 
-          if (hasPermission) {
-            // Sync cached steps from in-app Android background service (if available).
-            await stepTracker.syncOfflineAndHistoricalSteps()
+          // Use the higher value between backend and device
+          const finalSteps = Math.max(savedSteps, deviceSteps)
+          console.log('[Dashboard] Using steps:', finalSteps)
+          setDailySteps(finalSteps)
+          setActiveMinutes(Math.max(0, stats.activeMinutes || 0))
 
-            console.log("[Dashboard] Getting today's steps...")
-            // Get today's steps from device
-            const deviceSteps = await stepTracker.getTodaySteps()
-            const stats = await stepTracker.getTodayActivityStats()
-            console.log('[Dashboard] Device steps:', deviceSteps, 'Backend steps:', savedSteps)
-
-            // Use the higher value between backend and device
-            const finalSteps = Math.max(savedSteps, deviceSteps)
-            console.log('[Dashboard] Using steps:', finalSteps)
-            setDailySteps(finalSteps)
-            setActiveMinutes(Math.max(0, stats.activeMinutes || 0))
-
-            // Only sync if we have new steps from device
-            if (deviceSteps > savedSteps) {
-              await stepTracker.syncSteps(deviceSteps)
-            }
-
-            console.log('[Dashboard] Starting real-time tracking...')
-            // Start real-time tracking
-            await stepTracker.startTracking((updatedSteps) => {
-              console.log('[Dashboard] Step update received:', updatedSteps)
-              // Only update if the new value is higher (don't overwrite with 0 from device on web)
-              setDailySteps((currentSteps) => {
-                const newSteps = Math.max(currentSteps, updatedSteps)
-                console.log('[Dashboard] Updating steps from', currentSteps, 'to', newSteps)
-                return newSteps
-              })
-              void stepTracker
-                .getTodayActivityStats()
-                .then((s) =>
-                  setActiveMinutes(Math.max(0, s.activeMinutes || 0)),
-                )
-                .catch((e) =>
-                  console.error(
-                    '[Dashboard] Failed to refresh active minutes:',
-                    e,
-                  ),
-                )
-            })
-            console.log('[Dashboard] Real-time tracking started')
-          } else {
-            console.log('[Dashboard] Permission denied')
+          // Only sync if we have new steps from device
+          if (deviceSteps > savedSteps) {
+            await stepTracker.syncSteps(deviceSteps)
           }
         } catch (error) {
-          console.error('[Dashboard] Error initializing step tracking:', error)
+          console.error('[Dashboard] Error loading device steps:', error)
         }
-      } else {
-        console.log('[Dashboard] Step tracker not supported on this platform')
       }
     }
 
-    initStepTracking()
+    loadStepsData()
 
-    // Cleanup on unmount
+    // Set up polling to refresh steps every 30 seconds
+    const pollInterval = setInterval(async () => {
+      try {
+        const steps = await stepTracker.getTodaySteps()
+        setDailySteps((current) => Math.max(current, steps))
+
+        const stats = await stepTracker.getTodayActivityStats()
+        setActiveMinutes(Math.max(0, stats.activeMinutes || 0))
+      } catch (error) {
+        console.error('[Dashboard] Error polling steps:', error)
+      }
+    }, 30000) // Poll every 30 seconds
+
     return () => {
-      console.log('[Dashboard] Cleaning up step tracker...')
-      stepTracker.stopTracking()
+      clearInterval(pollInterval)
     }
   }, [])
 

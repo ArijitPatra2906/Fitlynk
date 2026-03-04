@@ -277,16 +277,14 @@ export default function StepsPage() {
         const backendToday = await stepTracker.getTodayStepsFromBackend()
         let stats = buildFallbackStats(backendToday)
 
+        // Get device stats (sensor is already running via StepTrackerInitializer)
         if (stepTracker.isSupported()) {
-          const hasPermission = await stepTracker.requestPermissions()
-          if (hasPermission) {
-            try {
-              const deviceStats = await stepTracker.getTodayActivityStats()
-              stats = mergePreferHigherSteps(stats, deviceStats)
-              await stepTracker.syncSteps(stats.steps)
-            } catch (e) {
-              console.error('[Steps] Failed to refresh from device:', e)
-            }
+          try {
+            const deviceStats = await stepTracker.getTodayActivityStats()
+            stats = mergePreferHigherSteps(stats, deviceStats)
+            await stepTracker.syncSteps(stats.steps)
+          } catch (e) {
+            console.error('[Steps] Failed to refresh from device:', e)
           }
         }
 
