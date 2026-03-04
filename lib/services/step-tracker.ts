@@ -450,7 +450,18 @@ class StepTrackerService {
       );
       if (!res.success) return 0;
 
-      const logs = Array.isArray(res.data) ? res.data : [];
+      // Backend can return either:
+      // 1. Direct array: { success: true, data: [...] } (no pagination params)
+      // 2. Paginated: { success: true, data: { logs: [...], pagination: {...} } } (with page/limit)
+      let logs = [];
+      if (Array.isArray(res.data)) {
+        // Direct array format
+        logs = res.data;
+      } else if (res.data && Array.isArray(res.data.logs)) {
+        // Paginated format
+        logs = res.data.logs;
+      }
+
       if (logs.length === 0) return 0;
       return logs[0]?.steps || 0;
     } catch (error) {

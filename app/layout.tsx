@@ -6,6 +6,7 @@ import { AppUrlListener } from '@/components/auth/app-url-listener'
 import { GoogleAuthInit } from '@/components/auth/google-auth-init'
 import { Toaster } from '@/components/ui/toaster'
 import { ThemeInitializer } from '@/components/theme/theme-initializer'
+import { NotificationInitializer } from '@/components/notifications/notification-initializer'
 
 const inter = Inter({ subsets: ['latin'] })
 
@@ -28,6 +29,7 @@ export default function RootLayout({
         <ThemeInitializer />
         <GoogleAuthInit />
         <AppUrlListener />
+        <NotificationInitializer />
         <Toaster />
         <AppLayout>{children}</AppLayout>
       </body>

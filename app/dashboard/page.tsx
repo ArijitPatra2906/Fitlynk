@@ -523,9 +523,8 @@ export default function DashboardPage() {
 
       // Always hydrate from backend first (historical source of truth).
       const savedSteps = await stepTracker.getTodayStepsFromBackend()
-      if (savedSteps > 0) {
-        setDailySteps(savedSteps)
-      }
+      console.log('[Dashboard] Backend steps:', savedSteps)
+      setDailySteps(savedSteps)
       await refreshActiveMinutesFromBackend()
 
       if (stepTracker.isSupported()) {
@@ -540,19 +539,32 @@ export default function DashboardPage() {
             await stepTracker.syncOfflineAndHistoricalSteps()
 
             console.log("[Dashboard] Getting today's steps...")
-            // Get today's steps
-            const steps = await stepTracker.getTodaySteps()
+            // Get today's steps from device
+            const deviceSteps = await stepTracker.getTodaySteps()
             const stats = await stepTracker.getTodayActivityStats()
-            console.log('[Dashboard] Steps fetched:', steps)
-            setDailySteps(steps)
+            console.log('[Dashboard] Device steps:', deviceSteps, 'Backend steps:', savedSteps)
+
+            // Use the higher value between backend and device
+            const finalSteps = Math.max(savedSteps, deviceSteps)
+            console.log('[Dashboard] Using steps:', finalSteps)
+            setDailySteps(finalSteps)
             setActiveMinutes(Math.max(0, stats.activeMinutes || 0))
-            await stepTracker.syncSteps(steps)
+
+            // Only sync if we have new steps from device
+            if (deviceSteps > savedSteps) {
+              await stepTracker.syncSteps(deviceSteps)
+            }
 
             console.log('[Dashboard] Starting real-time tracking...')
             // Start real-time tracking
             await stepTracker.startTracking((updatedSteps) => {
               console.log('[Dashboard] Step update received:', updatedSteps)
-              setDailySteps(updatedSteps)
+              // Only update if the new value is higher (don't overwrite with 0 from device on web)
+              setDailySteps((currentSteps) => {
+                const newSteps = Math.max(currentSteps, updatedSteps)
+                console.log('[Dashboard] Updating steps from', currentSteps, 'to', newSteps)
+                return newSteps
+              })
               void stepTracker
                 .getTodayActivityStats()
                 .then((s) =>

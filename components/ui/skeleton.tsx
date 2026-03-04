@@ -628,3 +628,113 @@ export function WaterPageSkeleton() {
     </div>
   )
 }
+
+// Notification-specific skeleton components
+export function NotificationCardSkeleton() {
+  return (
+    <div className='app-surface border border-[color:var(--app-border)] rounded-2xl p-3 mb-2'>
+      <div className='flex items-start gap-3'>
+        <Skeleton className='w-9 h-9 rounded-xl flex-shrink-0' />
+        <div className='flex-1 min-w-0'>
+          <div className='flex items-start justify-between gap-2 mb-1'>
+            <Skeleton className='h-[13px] w-32' />
+            <Skeleton className='h-[10px] w-12' />
+          </div>
+          <Skeleton className='h-[12px] w-full mb-1' />
+          <Skeleton className='h-[12px] w-3/4 mb-2' />
+          <div className='flex items-center gap-2'>
+            <Skeleton className='h-[10px] w-12' />
+            <Skeleton className='h-[13px] w-[13px] rounded-lg ml-auto' />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function NotificationsPageSkeleton() {
+  return (
+    <div className='h-screen overflow-hidden app-shell-bg flex flex-col pb-[88px]'>
+      {/* Filter Tabs */}
+      <div className='flex-shrink-0 px-6 py-3 app-shell-bg'>
+        <div className='flex items-center justify-between'>
+          <Skeleton className='h-[18px] w-24' />
+          <div className='flex gap-1.5'>
+            <Skeleton className='h-[30px] w-16 rounded-lg' />
+            <Skeleton className='h-[30px] w-20 rounded-lg' />
+          </div>
+        </div>
+      </div>
+
+      {/* Notifications List */}
+      <div className='flex-1 overflow-y-auto px-6 pt-4'>
+        {[...Array(6)].map((_, i) => (
+          <NotificationCardSkeleton key={i} />
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function NotificationSettingsSkeleton() {
+  return (
+    <div className='h-screen overflow-hidden app-shell-bg'>
+      <div className='h-full overflow-y-auto px-6 pt-4 pb-24 space-y-6'>
+        {/* Global Settings */}
+        <div>
+          <Skeleton className='h-[14px] w-32 mb-3' />
+          <div className='app-surface border border-[color:var(--app-border)] rounded-2xl divide-y divide-[color:var(--app-border)]'>
+            {[...Array(2)].map((_, i) => (
+              <div key={i} className='p-4 flex items-center justify-between'>
+                <div className='flex-1'>
+                  <Skeleton className='h-[14px] w-36 mb-2' />
+                  <Skeleton className='h-[12px] w-48' />
+                </div>
+                <Skeleton className='w-12 h-7 rounded-full' />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Achievement Notifications */}
+        <div>
+          <Skeleton className='h-[14px] w-40 mb-3' />
+          <div className='app-surface border border-[color:var(--app-border)] rounded-2xl divide-y divide-[color:var(--app-border)]'>
+            {[...Array(4)].map((_, i) => (
+              <div key={i} className='p-4 flex items-center justify-between'>
+                <div className='flex-1'>
+                  <Skeleton className='h-[14px] w-32 mb-2' />
+                  <Skeleton className='h-[12px] w-40' />
+                </div>
+                <Skeleton className='w-12 h-7 rounded-full' />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Reminders */}
+        <div>
+          <Skeleton className='h-[14px] w-24 mb-3' />
+          <div className='app-surface border border-[color:var(--app-border)] rounded-2xl divide-y divide-[color:var(--app-border)]'>
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className='p-4'>
+                <div className='flex items-center justify-between mb-3'>
+                  <div className='flex-1'>
+                    <Skeleton className='h-[14px] w-32 mb-2' />
+                    <Skeleton className='h-[12px] w-36' />
+                  </div>
+                  <Skeleton className='w-12 h-7 rounded-full' />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Save Button */}
+        <div className='pt-2'>
+          <Skeleton className='h-[50px] w-full rounded-2xl' />
+        </div>
+      </div>
+    </div>
+  )
+}

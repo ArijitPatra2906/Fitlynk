@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { Icon } from '@/components/ui/icon'
 import { Skeleton } from '@/components/ui/skeleton'
+import { NotificationBell } from '@/components/notifications/notification-bell'
 
 interface AppBarConfig {
   title?: string
@@ -110,6 +111,32 @@ const exercisesConfig: AppBarConfig = {
   showAvatar: true,
 }
 
+const notificationsConfig: AppBarConfig = {
+  title: 'Notifications',
+  showBack: true,
+  showNotifications: false,
+  showAvatar: true,
+  actions: (
+    <button
+      onClick={() => {
+        if (typeof window !== 'undefined') {
+          window.location.href = '/settings/notifications'
+        }
+      }}
+      className='w-10 h-10 rounded-xl app-surface border border-[color:var(--app-border)] flex items-center justify-center'
+    >
+      <Icon name='settings' size={18} color='#64748B' />
+    </button>
+  ),
+}
+
+const notificationSettingsConfig: AppBarConfig = {
+  title: 'Notification Settings',
+  showBack: true,
+  showNotifications: false,
+  showAvatar: true,
+}
+
 const routeConfigs: Record<string, AppBarConfig> = {
   '/dashboard': dashboardConfig,
   '/steps': stepsConfig,
@@ -123,6 +150,8 @@ const routeConfigs: Record<string, AppBarConfig> = {
   '/workouts': workoutsConfig,
   '/templates': templatesConfig,
   '/exercises': exercisesConfig,
+  '/notifications': notificationsConfig,
+  '/settings/notifications': notificationSettingsConfig,
 }
 
 export function AppBar() {
@@ -181,7 +210,10 @@ export function AppBar() {
       }
     }
 
-    window.addEventListener('profile:updated', onProfileUpdated as EventListener)
+    window.addEventListener(
+      'profile:updated',
+      onProfileUpdated as EventListener,
+    )
     fetchUser()
 
     return () => {
@@ -222,7 +254,10 @@ export function AppBar() {
   }
 
   return (
-    <div className='flex-shrink-0 px-6 pt-safe pb-3 flex items-center justify-between app-shell-bg border-b' style={{ borderColor: 'var(--app-border)' }}>
+    <div
+      className='flex-shrink-0 px-6 pt-safe pb-3 flex items-center justify-between app-shell-bg border-b'
+      style={{ borderColor: 'var(--app-border)' }}
+    >
       {/* Left Side */}
       <div className='flex items-center gap-3 flex-1'>
         {config.showBack && (
@@ -230,7 +265,7 @@ export function AppBar() {
             onClick={() => router.back()}
             className='w-10 h-10 rounded-xl bg-[#131520] border border-white/5 flex items-center justify-center'
           >
-            <Icon name='arrowLeft' size={20} color='#64748B' />
+            <Icon name='chevronLeft' size={20} color='#64748B' />
           </button>
         )}
 
@@ -250,7 +285,7 @@ export function AppBar() {
                   {config.subtitle}
                 </div>
               )}
-                <div
+              <div
                 className={`font-extrabold tracking-tight ${
                   config.subtitle ? 'text-[22px]' : 'text-[18px]'
                 }`}
@@ -268,11 +303,7 @@ export function AppBar() {
       <div className='flex gap-2.5'>
         {config.actions}
 
-        {config.showNotifications && (
-          <button className='w-10 h-10 rounded-xl app-surface border flex items-center justify-center'>
-            <Icon name='bell' size={18} color='#64748B' />
-          </button>
-        )}
+        {config.showNotifications && <NotificationBell />}
 
         {config.showAvatar &&
           (loading ? (

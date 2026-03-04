@@ -14,6 +14,7 @@ import {
   setTheme,
   type ThemeMode,
 } from '@/lib/theme/theme-manager'
+import { useNotificationPreferences } from '@/lib/hooks/useNotificationPreferences'
 
 type AvatarChoice = {
   label: string
@@ -139,6 +140,10 @@ export default function ProfilePage() {
   const [customSeed, setCustomSeed] = useState('fitlynk-athlete')
   const [customBgColor, setCustomBgColor] = useState('b6e3f4')
   const fileInputRef = useRef<HTMLInputElement | null>(null)
+
+  // Notification preferences
+  const { preferences: notificationPrefs, togglePushNotifications } =
+    useNotificationPreferences()
 
   useEffect(() => {
     setThemeMode(getResolvedTheme())
@@ -508,30 +513,77 @@ export default function ProfilePage() {
             Settings
           </div>
           <div className='bg-[#131520] border border-white/5 rounded-2xl overflow-hidden'>
-            {[
-              {
-                label: 'Units',
-                val: userData?.units === 'metric' ? 'Metric' : 'Imperial',
-                icon: 'repeat',
-              },
-              { label: 'Notifications', val: 'Enabled', icon: 'bell' },
-            ].map((item, i, arr) => (
+            {/* Units Setting */}
+            <div className='flex items-center gap-3 px-4 py-3.5 border-b border-white/5'>
+              <div className='w-[34px] h-[34px] rounded-xl flex items-center justify-center bg-blue-500/10'>
+                <Icon name='repeat' size={16} color='#3B82F6' />
+              </div>
+              <span className='flex-1 text-[14px] font-medium text-white'>
+                Units
+              </span>
+              <span className='text-[13px] text-gray-400'>
+                {userData?.units === 'metric' ? 'Metric' : 'Imperial'}
+              </span>
+              <Icon name='chevronRight' size={16} color='#374151' />
+            </div>
+
+            {/* Notifications Toggle */}
+            <button
+              type='button'
+              onClick={async () => {
+                const success = await togglePushNotifications()
+                if (success) {
+                  toast.success(
+                    notificationPrefs?.push_notifications_enabled
+                      ? 'Push notifications disabled'
+                      : 'Push notifications enabled'
+                  )
+                } else {
+                  toast.error('Failed to update notification settings')
+                }
+              }}
+              className='w-full flex items-center gap-3 px-4 py-3.5 text-left border-b border-white/5'
+            >
+              <div className='w-[34px] h-[34px] rounded-xl flex items-center justify-center bg-blue-500/10'>
+                <Icon name='bell' size={16} color='#3B82F6' />
+              </div>
+              <span className='flex-1 text-[14px] font-medium text-white'>
+                Push Notifications
+              </span>
+              <span className='text-[13px] text-gray-400'>
+                {notificationPrefs?.push_notifications_enabled ? 'On' : 'Off'}
+              </span>
               <div
-                key={item.label}
-                className={`flex items-center gap-3 px-4 py-3.5 ${
-                  i < arr.length ? 'border-b border-white/5' : ''
+                className={`w-11 h-6 rounded-full p-1 transition-colors ${
+                  notificationPrefs?.push_notifications_enabled
+                    ? 'bg-blue-600'
+                    : 'bg-slate-500'
                 }`}
               >
-                <div className='w-[34px] h-[34px] rounded-xl flex items-center justify-center bg-blue-500/10'>
-                  <Icon name={item.icon} size={16} color='#3B82F6' />
-                </div>
-                <span className='flex-1 text-[14px] font-medium text-white'>
-                  {item.label}
-                </span>
-                <span className='text-[13px] text-gray-400'>{item.val}</span>
-                <Icon name='chevronRight' size={16} color='#374151' />
+                <div
+                  className={`h-4 w-4 rounded-full bg-white transition-transform ${
+                    notificationPrefs?.push_notifications_enabled
+                      ? 'translate-x-5'
+                      : 'translate-x-0'
+                  }`}
+                />
               </div>
-            ))}
+            </button>
+
+            {/* Link to Detailed Settings */}
+            <Link
+              href='/settings/notifications'
+              className='flex items-center gap-3 px-4 py-3.5 border-b border-white/5'
+            >
+              <div className='w-[34px] h-[34px] rounded-xl flex items-center justify-center bg-blue-500/10'>
+                <Icon name='settings' size={16} color='#3B82F6' />
+              </div>
+              <span className='flex-1 text-[14px] font-medium text-white'>
+                Notification Settings
+              </span>
+              <span className='text-[13px] text-gray-400'>Customize</span>
+              <Icon name='chevronRight' size={16} color='#374151' />
+            </Link>
             <button
               type='button'
               onClick={toggleThemeMode}

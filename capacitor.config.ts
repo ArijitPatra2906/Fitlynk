@@ -12,6 +12,9 @@ const config: CapacitorConfig = {
       smallIcon: 'ic_stat_icon_config_sample',
       iconColor: '#1A73E8',
     },
+    PushNotifications: {
+      presentationOptions: ['badge', 'sound', 'alert'],
+    },
     GoogleAuth: {
       scopes: ['profile', 'email'],
       serverClientId: '', // optional for now (required only if using backend verification)
