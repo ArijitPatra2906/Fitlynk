@@ -76,7 +76,7 @@ export function GlobalQuickLogFab() {
       <button
         type='button'
         onClick={() => setOpen((prev) => !prev)}
-        className={`fixed ${WITH_BOTTOM_NAV.includes(pathname) ? 'bottom-16' : 'bottom-10'} right-6 w-[40px] h-[40px] rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-[0_8px_20px_rgba(59,130,246,0.45)] z-40 transition-transform`}
+        className={`fixed ${WITH_BOTTOM_NAV.includes(pathname) ? 'bottom-20' : 'bottom-10'} right-6 w-[40px] h-[40px] rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 flex items-center justify-center shadow-[0_8px_20px_rgba(59,130,246,0.45)] z-40 transition-transform`}
         style={{ transform: open ? 'rotate(45deg)' : 'rotate(0)' }}
         aria-label='Open quick log actions'
       >

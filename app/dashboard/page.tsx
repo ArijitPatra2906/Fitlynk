@@ -759,7 +759,7 @@ export default function DashboardPage() {
                   / {(waterGoalMl / 1000).toFixed(1)} L goal
                 </div>
                 <div className='mt-auto pt-3 border-t border-white/5'>
-                  <div className='h-1.5 w-full bg-[#1e2030] rounded-full overflow-hidden'>
+                  <div className='h-1.5 w-full bg-[var(--app-surface-2)] rounded-full overflow-hidden'>
                     <div
                       className='h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full transition-all'
                       style={{
@@ -792,7 +792,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <div className='mt-auto pt-2.5 border-t border-white/5 w-full'>
-                  <div className='w-full h-1.5 bg-[#1e2030] rounded-full overflow-hidden'>
+                  <div className='w-full h-1.5 bg-[var(--app-surface-2)] rounded-full overflow-hidden'>
                     <div
                       className='h-full bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all'
                       style={{
@@ -926,7 +926,7 @@ export default function DashboardPage() {
                   (prev) => prev + RECENT_ACTIVITY_BATCH_SIZE,
                 )
               }
-              className='mt-3 w-full h-10 rounded-xl border border-white/10 bg-[#0B0D17] text-[13px] font-semibold text-[color:var(--app-text)] hover:text-white'
+              className='mt-3 w-full h-10 rounded-xl border border-white/10 bg-[#0B0D17] text-[13px] font-semibold text-[color:var(--app-text)] hover:text-[color:var(--app-text)]'
             >
               See more
             </button>

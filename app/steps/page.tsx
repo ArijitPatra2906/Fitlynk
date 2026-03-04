@@ -480,15 +480,15 @@ export default function StepsPage() {
             <div className='flex items-end justify-between text-[16px] text-white font-semibold mt-[-2px]'>
               <div>
                 {todayStats.slowSteps.toLocaleString()}{' '}
-                <span className='text-[13px] text-gray-300'>{slowPct}%</span>
+                <span className='text-[13px] text-gray-200'>{slowPct}%</span>
               </div>
               <div>
                 {todayStats.briskSteps.toLocaleString()}{' '}
-                <span className='text-[13px] text-gray-300'>{briskPct}%</span>
+                <span className='text-[13px] text-gray-200'>{briskPct}%</span>
               </div>
             </div>
 
-            <div className='w-full h-2 rounded-full overflow-hidden bg-[#1e2030] mt-2 mb-1'>
+            <div className='w-full h-2 rounded-full overflow-hidden bg-[var(--app-surface-2)] mt-2 mb-1'>
               <div className='h-full flex'>
                 <div
                   className='h-full bg-[#818CF8]'
@@ -501,7 +501,7 @@ export default function StepsPage() {
               </div>
             </div>
 
-            <div className='flex items-center justify-between text-[11px] text-gray-300 mb-2.5'>
+            <div className='flex items-center justify-between text-[11px] text-gray-200 mb-2.5'>
               <div>Slow walking</div>
               <div>Brisk walking</div>
             </div>
@@ -512,21 +512,21 @@ export default function StepsPage() {
                 <div className='text-[24px] leading-none text-white font-semibold tracking-tight'>
                   {todayStats.distanceKm.toFixed(2)}
                 </div>
-                <div className='text-[11px] text-gray-300 mt-1'>km</div>
+                <div className='text-[11px] text-gray-200 mt-1'>km</div>
               </div>
               <div className='text-center border-l border-blue-500/20'>
                 <div className='text-[11px] text-gray-400'>Calories</div>
                 <div className='text-[24px] leading-none text-white font-semibold tracking-tight'>
                   {todayStats.caloriesBurned}
                 </div>
-                <div className='text-[11px] text-gray-300 mt-1'>kcal</div>
+                <div className='text-[11px] text-gray-200 mt-1'>kcal</div>
               </div>
             </div>
           </div>
 
-          <div className='bg-[#131520] border border-white/10 rounded-2xl p-4 mb-4'>
+          <div className='app-surface border rounded-2xl p-4 mb-4'>
             <div className='flex items-center justify-between mb-3'>
-              <div className='text-[14px] text-white font-bold'>Step Goal</div>
+              <div className='text-[14px] text-[color:var(--app-text)] font-bold'>Step Goal</div>
               <div className='text-[16px] font-bold text-blue-400'>
                 {stepGoal.toLocaleString()}
               </div>
@@ -550,8 +550,8 @@ export default function StepsPage() {
             </button>
           </div>
 
-          <div className='bg-[#131520] border border-white/10 rounded-2xl p-4 mb-4'>
-            <div className='text-[14px] text-white font-bold mb-3'>
+          <div className='app-surface border rounded-2xl p-4 mb-4'>
+            <div className='text-[14px] text-[color:var(--app-text)] font-bold mb-3'>
               Log Today Steps
             </div>
             <div className='flex gap-2 mb-3'>
@@ -562,8 +562,8 @@ export default function StepsPage() {
                   onClick={() => setManualSteps(String(amount))}
                   className={`flex-1 border rounded-lg py-2 text-[12px] font-semibold ${
                     Number(manualSteps) === amount
-                      ? 'bg-blue-600/20 border-blue-500/40 text-blue-200'
-                      : 'bg-[#1a1f35] border-white/10 text-blue-300'
+                      ? 'bg-blue-600/20 border-blue-500/40 text-blue-600'
+                      : 'bg-[var(--app-surface-2)] border-[color:var(--app-border)] text-blue-500'
                   }`}
                 >
                   +{amount}
@@ -575,13 +575,13 @@ export default function StepsPage() {
               min='0'
               value={manualSteps}
               onChange={(e) => setManualSteps(e.target.value)}
-              className='w-full bg-[#1a1f35] border border-white/10 rounded-xl px-3 py-3 text-white text-[16px] mb-3'
+              className='w-full bg-[var(--app-surface-2)] border border-[color:var(--app-border)] rounded-xl px-3 py-3 text-[color:var(--app-text)] text-[16px] mb-3'
             />
             <div className='grid grid-cols-2 gap-2'>
               <button
                 type='button'
                 onClick={handleSyncFromDevice}
-                className='py-3 rounded-xl bg-white/5 border border-white/10 text-[13px] font-semibold text-white'
+                className='py-3 rounded-xl bg-white/5 border border-[color:var(--app-border)] text-[13px] font-semibold text-[color:var(--app-text)]'
               >
                 Sync Device
               </button>
@@ -597,7 +597,7 @@ export default function StepsPage() {
           </div>
 
           <div className='flex items-center justify-between mb-3'>
-            <div className='text-[15px] text-white font-bold'>Step Logs</div>
+            <div className='text-[15px] text-[color:var(--app-text)] font-bold'>Step Logs</div>
             <div className='flex gap-2'>
               <button
                 type='button'
@@ -605,7 +605,7 @@ export default function StepsPage() {
                 className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold ${
                   filter === 7
                     ? 'bg-blue-600 text-white'
-                    : 'bg-[#131520] border border-white/10 text-gray-300'
+                    : 'app-surface border text-[color:var(--app-text-muted)]'
                 }`}
               >
                 Last 7 days
@@ -616,7 +616,7 @@ export default function StepsPage() {
                 className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold ${
                   filter === 30
                     ? 'bg-blue-600 text-white'
-                    : 'bg-[#131520] border border-white/10 text-gray-300'
+                    : 'app-surface border text-[color:var(--app-text-muted)]'
                 }`}
               >
                 Last 30 days
@@ -625,9 +625,9 @@ export default function StepsPage() {
           </div>
 
           {logsLoading ? (
-            <div className='text-gray-400 text-sm'>Loading logs...</div>
+            <div className='text-[color:var(--app-text-muted)] text-sm'>Loading logs...</div>
           ) : groupedLogs.length === 0 ? (
-            <div className='text-gray-400 text-sm'>
+            <div className='text-[color:var(--app-text-muted)] text-sm'>
               No step logs in this range.
             </div>
           ) : (
@@ -637,15 +637,15 @@ export default function StepsPage() {
                 return (
                   <div
                     key={log.dayKey}
-                    className='bg-[#131520] border border-white/10 rounded-xl p-3'
+                    className='app-surface border rounded-xl p-3'
                   >
                     <div className='flex items-center justify-between mb-1'>
-                      <div className='text-[13px] text-white font-semibold'>
+                      <div className='text-[13px] text-[color:var(--app-text)] font-semibold'>
                         {formatDayTitle(log.dayKey)}
                       </div>
                     </div>
                     <div className='flex items-center justify-between'>
-                      <div className='text-[11px] text-gray-400'>
+                      <div className='text-[11px] text-[color:var(--app-text-muted)]'>
                         {hitGoal ? 'Goal achieved' : 'Goal not achieved'}
                       </div>
                       <div className='text-right'>
@@ -654,32 +654,32 @@ export default function StepsPage() {
                             <Icon name='crown' size={15} color='#F59E0B' />
                           </div>
                         )}
-                        <div className='text-[17px] text-white font-bold leading-none'>
+                        <div className='text-[17px] text-[color:var(--app-text)] font-bold leading-none'>
                           {log.steps.toLocaleString()}
                         </div>
-                        <div className='text-[11px] text-gray-400'>steps</div>
+                        <div className='text-[11px] text-[color:var(--app-text-muted)]'>steps</div>
                       </div>
                     </div>
-                    <div className='mt-2 pt-2 border-t border-white/5 grid grid-cols-3 gap-2 text-center'>
+                    <div className='mt-2 pt-2 border-t border-[color:var(--app-border)] grid grid-cols-3 gap-2 text-center'>
                       <div>
-                        <div className='text-[10px] text-gray-500'>
+                        <div className='text-[10px] text-[color:var(--app-text-muted)]'>
                           Distance
                         </div>
-                        <div className='text-[12px] text-gray-200 font-semibold'>
+                        <div className='text-[12px] text-[color:var(--app-text)] font-semibold'>
                           {(log.distance_km || 0).toFixed(2)} km
                         </div>
                       </div>
                       <div>
-                        <div className='text-[10px] text-gray-500'>
+                        <div className='text-[10px] text-[color:var(--app-text-muted)]'>
                           Calories
                         </div>
-                        <div className='text-[12px] text-gray-200 font-semibold'>
+                        <div className='text-[12px] text-[color:var(--app-text)] font-semibold'>
                           {Math.round(log.calories_burned || 0)} kcal
                         </div>
                       </div>
                       <div>
-                        <div className='text-[10px] text-gray-500'>Time</div>
-                        <div className='text-[12px] text-gray-200 font-semibold'>
+                        <div className='text-[10px] text-[color:var(--app-text-muted)]'>Time</div>
+                        <div className='text-[12px] text-[color:var(--app-text)] font-semibold'>
                           {Math.max(0, Number(log.active_minutes || 0))} min
                         </div>
                       </div>

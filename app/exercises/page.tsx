@@ -186,7 +186,7 @@ export default function ExercisesPage() {
           {[...Array(10)].map((_, i) => (
             <div
               key={i}
-              className='flex items-center gap-3.5 p-4 bg-[#131520] border border-white/5 rounded-2xl mb-2.5'
+              className='flex items-center gap-3.5 p-4 app-surface border rounded-2xl mb-2.5'
             >
               <Skeleton className='w-10 h-10 rounded-xl' />
               <div className='flex-1'>
@@ -204,9 +204,9 @@ export default function ExercisesPage() {
 
       <div className='px-6 pb-4'>
         {exercises.length === 0 && !loading ? (
-          <div className='bg-[#131520] border border-white/5 rounded-2xl p-6 text-center'>
-            <div className='text-gray-400 text-sm mb-2'>No exercises found</div>
-            <div className='text-gray-500 text-xs'>
+          <div className='app-surface border rounded-2xl p-6 text-center'>
+            <div className='text-[color:var(--app-text-muted)] text-sm mb-2'>No exercises found</div>
+            <div className='text-[color:var(--app-text-muted)] text-xs'>
               Try adjusting your filters or create a new exercise
             </div>
           </div>

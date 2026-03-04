@@ -138,10 +138,23 @@ html[data-theme='light'] .bg-gradient-to-b .text-gray-500 {
   color: #64748b !important;
 }
 
+html[data-theme='light'] .bg-gradient-to-br .text-gray-200,
+html[data-theme='light'] .bg-gradient-to-b .text-gray-200 {
+  color: #94a3b8 !important;
+}
+
+html[data-theme='light'] .bg-gradient-to-br .text-gray-300,
+html[data-theme='light'] .bg-gradient-to-b .text-gray-300,
+html[data-theme='light'] .bg-gradient-to-br .text-white,
+html[data-theme='light'] .bg-gradient-to-b .text-white {
+  color: #1e293b !important;
+}
+
 html[data-theme='light'] .border-white\/5,
 html[data-theme='light'] .border-white\/10 {
   border-color: var(--app-border) !important;
 }
+
 
 /* Safe Area Support for Notches */
 @supports (padding: env(safe-area-inset-top)) {

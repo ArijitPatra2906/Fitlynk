@@ -661,15 +661,15 @@ export default function ProgressPage() {
 
           {tab === 'weight' && (
             <>
-              <div className='bg-[#131520] border border-white/5 rounded-[22px] p-[18px] mb-3.5'>
+              <div className='app-surface border rounded-[22px] p-[18px] mb-3.5'>
                 <div className='flex justify-between items-start mb-3.5'>
                   <div>
-                    <div className='text-[12px] text-gray-400 mb-0.5'>
+                    <div className='text-[12px] text-[color:var(--app-text-muted)] mb-0.5'>
                       Body Weight
                     </div>
-                    <div className='text-[26px] font-extrabold text-white tracking-tight'>
+                    <div className='text-[26px] font-extrabold text-[color:var(--app-text)] tracking-tight'>
                       {weightStats.currentWeight.toFixed(1)}{' '}
-                      <span className='text-[14px] text-gray-400 font-normal'>
+                      <span className='text-[14px] text-[color:var(--app-text-muted)] font-normal'>
                         kg
                       </span>
                     </div>
@@ -690,7 +690,7 @@ export default function ProgressPage() {
                       {weightTrendText}
                     </div>
                   </div>
-                  <div className='text-[12px] text-gray-400 bg-[#0B0D17] rounded-lg py-1 px-2.5'>
+                  <div className='text-[12px] text-[color:var(--app-text-muted)] bg-[var(--app-surface-2)] rounded-lg py-1 px-2.5'>
                     {range} days
                   </div>
                 </div>
@@ -756,7 +756,7 @@ export default function ProgressPage() {
                     {chartDateLabels.map((label, idx) => (
                       <div
                         key={`${label}-${idx}`}
-                        className='text-[10px] text-gray-600'
+                        className='text-[10px] text-[color:var(--app-text-muted)]'
                       >
                         {label}
                       </div>
@@ -788,9 +788,9 @@ export default function ProgressPage() {
                 ].map((item) => (
                   <div
                     key={item.label}
-                    className='bg-[#131520] border border-white/5 rounded-2xl p-3.5 text-center'
+                    className='app-surface border rounded-2xl p-3.5 text-center'
                   >
-                    <div className='text-[10px] text-gray-400 uppercase tracking-wider mb-1'>
+                    <div className='text-[10px] text-[color:var(--app-text-muted)] uppercase tracking-wider mb-1'>
                       {item.label}
                     </div>
                     <div
@@ -799,13 +799,13 @@ export default function ProgressPage() {
                     >
                       {item.val}
                     </div>
-                    <div className='text-[10px] text-gray-600'>{item.sub}</div>
+                    <div className='text-[10px] text-[color:var(--app-text-muted)]'>{item.sub}</div>
                   </div>
                 ))}
               </div>
 
-              <div className='bg-[#131520] border border-white/5 rounded-[22px] p-[18px] mb-3.5'>
-                <div className='text-[13px] font-bold text-white mb-3'>
+              <div className='app-surface border rounded-[22px] p-[18px] mb-3.5'>
+                <div className='text-[13px] font-bold text-[color:var(--app-text)] mb-3'>
                   Log Weight
                 </div>
                 <div className='grid grid-cols-[1fr_auto] gap-2'>
@@ -816,7 +816,7 @@ export default function ProgressPage() {
                     step='0.1'
                     value={weightInput}
                     onChange={(e) => setWeightInput(e.target.value)}
-                    className='bg-[#1a1f35] border border-white/10 rounded-xl px-3 py-3 text-white text-[16px]'
+                    className='bg-[var(--app-surface-2)] border border-[color:var(--app-border)] rounded-xl px-3 py-3 text-[color:var(--app-text)] text-[16px]'
                     placeholder='Enter kg'
                   />
                   <button
@@ -830,8 +830,8 @@ export default function ProgressPage() {
                 </div>
               </div>
 
-              <div className='bg-[#131520] border border-white/5 rounded-[22px] p-[18px] mb-3.5'>
-                <div className='text-[13px] font-bold text-white mb-3'>
+              <div className='app-surface border rounded-[22px] p-[18px] mb-3.5'>
+                <div className='text-[13px] font-bold text-[color:var(--app-text)] mb-3'>
                   Goal Weight
                 </div>
                 <div className='grid grid-cols-[1fr_auto] gap-2'>
@@ -842,7 +842,7 @@ export default function ProgressPage() {
                     step='0.1'
                     value={goalWeightInput}
                     onChange={(e) => setGoalWeightInput(e.target.value)}
-                    className='bg-[#1a1f35] border border-white/10 rounded-xl px-3 py-3 text-white text-[16px]'
+                    className='bg-[var(--app-surface-2)] border border-[color:var(--app-border)] rounded-xl px-3 py-3 text-[color:var(--app-text)] text-[16px]'
                     placeholder='Set target kg'
                   />
                   <button
@@ -856,17 +856,17 @@ export default function ProgressPage() {
                 </div>
               </div>
 
-              <div className='bg-[#131520] border border-white/5 rounded-[22px] p-[18px] mb-3.5'>
-                <div className='text-[14px] font-bold text-white mb-3'>
+              <div className='app-surface border rounded-[22px] p-[18px] mb-3.5'>
+                <div className='text-[14px] font-bold text-[color:var(--app-text)] mb-3'>
                   Weight Logs
                 </div>
 
                 {weightLogsLoading ? (
-                  <div className='text-[13px] text-gray-400'>
+                  <div className='text-[13px] text-[color:var(--app-text-muted)]'>
                     Loading logs...
                   </div>
                 ) : weightLogs.length === 0 ? (
-                  <div className='text-[13px] text-gray-400'>
+                  <div className='text-[13px] text-[color:var(--app-text-muted)]'>
                     No weight logs yet.
                   </div>
                 ) : (
@@ -874,10 +874,10 @@ export default function ProgressPage() {
                     {weightLogs.map((log) => (
                       <div
                         key={log._id}
-                        className='bg-[#0B0D17] border border-white/5 rounded-xl px-3 py-2.5 flex items-center justify-between'
+                        className='bg-[var(--app-surface-2)] border border-[color:var(--app-border)] rounded-xl px-3 py-2.5 flex items-center justify-between'
                       >
                         <div>
-                          <div className='text-[12px] text-gray-300'>
+                          <div className='text-[12px] text-[color:var(--app-text)]'>
                             {new Date(log.recorded_at).toLocaleDateString(
                               undefined,
                               {
@@ -887,7 +887,7 @@ export default function ProgressPage() {
                               },
                             )}
                           </div>
-                          <div className='text-[11px] text-gray-500'>
+                          <div className='text-[11px] text-[color:var(--app-text-muted)]'>
                             {new Date(log.recorded_at).toLocaleTimeString([], {
                               hour: '2-digit',
                               minute: '2-digit',
@@ -895,10 +895,10 @@ export default function ProgressPage() {
                           </div>
                         </div>
                         <div className='text-right'>
-                          <div className='text-[17px] font-bold text-white leading-none'>
+                          <div className='text-[17px] font-bold text-[color:var(--app-text)] leading-none'>
                             {toNumber(log.weight_kg).toFixed(1)}
                           </div>
-                          <div className='text-[11px] text-gray-400'>kg</div>
+                          <div className='text-[11px] text-[color:var(--app-text-muted)]'>kg</div>
                         </div>
                       </div>
                     ))}
@@ -911,7 +911,7 @@ export default function ProgressPage() {
                       type='button'
                       onClick={handleLoadMoreWeightLogs}
                       disabled={weightLogsLoading}
-                      className='w-full h-10 rounded-xl border border-white/10 bg-[#0B0D17] text-[13px] font-semibold text-gray-200 hover:text-white disabled:opacity-50'
+                      className='w-full h-10 rounded-xl border border-[color:var(--app-border)] bg-[var(--app-surface-2)] text-[13px] font-semibold text-[color:var(--app-text)] hover:text-[color:var(--app-text)] disabled:opacity-50'
                     >
                       {weightLogsLoading ? 'Loading...' : 'See more'}
                     </button>
@@ -923,27 +923,27 @@ export default function ProgressPage() {
 
           {tab === 'workouts' && (
             <>
-              <div className='bg-[#131520] border border-white/5 rounded-[22px] p-[18px] mb-3.5'>
-                <div className='text-[13px] font-bold text-white mb-1'>
+              <div className='app-surface border rounded-[22px] p-[18px] mb-3.5'>
+                <div className='text-[13px] font-bold text-[color:var(--app-text)] mb-1'>
                   Volume This Period
                 </div>
-                <div className='text-[11px] text-gray-400 mb-3.5'>
+                <div className='text-[11px] text-[color:var(--app-text-muted)] mb-3.5'>
                   Total: {workoutDerived.totalVolume.toLocaleString()} kg
                 </div>
                 <div className='grid grid-cols-2 gap-2.5 mb-3'>
-                  <div className='bg-[#0B0D17] border border-white/5 rounded-xl p-3'>
-                    <div className='text-[10px] text-gray-500 uppercase'>
+                  <div className='bg-[var(--app-surface-2)] border border-[color:var(--app-border)] rounded-xl p-3'>
+                    <div className='text-[10px] text-[color:var(--app-text-muted)] uppercase'>
                       Sessions
                     </div>
-                    <div className='text-[20px] text-white font-extrabold'>
+                    <div className='text-[20px] text-[color:var(--app-text)] font-extrabold'>
                       {workoutDerived.totalSessions}
                     </div>
                   </div>
-                  <div className='bg-[#0B0D17] border border-white/5 rounded-xl p-3'>
-                    <div className='text-[10px] text-gray-500 uppercase'>
+                  <div className='bg-[var(--app-surface-2)] border border-[color:var(--app-border)] rounded-xl p-3'>
+                    <div className='text-[10px] text-[color:var(--app-text-muted)] uppercase'>
                       Volume
                     </div>
-                    <div className='text-[20px] text-white font-extrabold'>
+                    <div className='text-[20px] text-[color:var(--app-text)] font-extrabold'>
                       {workoutDerived.totalVolume.toLocaleString()}
                     </div>
                   </div>
@@ -970,7 +970,7 @@ export default function ProgressPage() {
                           className='w-full rounded-md bg-blue-500/70'
                           style={{ height: `${h}px` }}
                         />
-                        <div className='text-[10px] text-gray-600 mt-1 leading-none min-h-[10px]'>
+                        <div className='text-[10px] text-[color:var(--app-text-muted)] mt-1 leading-none min-h-[10px]'>
                           {showLabel ? workoutDerived.dayLabels[idx] : ''}
                         </div>
                       </div>
@@ -979,32 +979,32 @@ export default function ProgressPage() {
                 </div>
               </div>
 
-              <div className='bg-[#131520] border border-white/5 rounded-[22px] p-[18px]'>
+              <div className='app-surface border rounded-[22px] p-[18px]'>
                 <div className='flex items-center gap-2 mb-3.5'>
                   <Icon name='award' size={16} color='#F59E0B' />
-                  <span className='text-[14px] font-bold text-white'>
+                  <span className='text-[14px] font-bold text-[color:var(--app-text)]'>
                     Personal Records
                   </span>
                 </div>
 
                 {workoutDerived.prs.length === 0 ? (
-                  <div className='text-[13px] text-gray-400'>
+                  <div className='text-[13px] text-[color:var(--app-text-muted)]'>
                     No PR data available yet.
                   </div>
                 ) : (
                   workoutDerived.prs.map((item) => (
                     <div
                       key={item.exercise}
-                      className='flex justify-between py-2.5 border-b border-white/5 last:border-0'
+                      className='flex justify-between py-2.5 border-b border-[color:var(--app-border)] last:border-0'
                     >
-                      <span className='text-[13px] text-gray-300'>
+                      <span className='text-[13px] text-[color:var(--app-text)]'>
                         {item.exercise}
                       </span>
                       <div className='text-right'>
                         <div className='text-[13px] font-bold text-amber-500'>
                           {item.weight} kg x {item.reps || 0}
                         </div>
-                        <div className='text-[11px] text-gray-600'>
+                        <div className='text-[11px] text-[color:var(--app-text-muted)]'>
                           {formatShortDate(item.date)}
                         </div>
                       </div>
@@ -1016,48 +1016,48 @@ export default function ProgressPage() {
           )}
 
           {tab === 'macros' && (
-            <div className='bg-[#131520] border border-white/5 rounded-[22px] p-[18px]'>
-              <div className='text-[14px] font-bold text-white mb-3.5'>
+            <div className='app-surface border rounded-[22px] p-[18px]'>
+              <div className='text-[14px] font-bold text-[color:var(--app-text)] mb-3.5'>
                 Macro Trends
               </div>
               <div className='grid grid-cols-2 gap-2.5'>
-                <div className='bg-[#0B0D17] border border-white/5 rounded-xl p-3'>
-                  <div className='text-[10px] text-gray-500 uppercase'>
+                <div className='bg-[var(--app-surface-2)] border border-[color:var(--app-border)] rounded-xl p-3'>
+                  <div className='text-[10px] text-[color:var(--app-text-muted)] uppercase'>
                     Tracked Days
                   </div>
-                  <div className='text-[19px] text-white font-extrabold'>
+                  <div className='text-[19px] text-[color:var(--app-text)] font-extrabold'>
                     {macroDerived.trackedDays}
                   </div>
                 </div>
-                <div className='bg-[#0B0D17] border border-white/5 rounded-xl p-3'>
-                  <div className='text-[10px] text-gray-500 uppercase'>
+                <div className='bg-[var(--app-surface-2)] border border-[color:var(--app-border)] rounded-xl p-3'>
+                  <div className='text-[10px] text-[color:var(--app-text-muted)] uppercase'>
                     Avg Calories
                   </div>
-                  <div className='text-[19px] text-white font-extrabold'>
+                  <div className='text-[19px] text-[color:var(--app-text)] font-extrabold'>
                     {macroDerived.avgCalories}
                   </div>
                 </div>
-                <div className='bg-[#0B0D17] border border-white/5 rounded-xl p-3'>
-                  <div className='text-[10px] text-gray-500 uppercase'>
+                <div className='bg-[var(--app-surface-2)] border border-[color:var(--app-border)] rounded-xl p-3'>
+                  <div className='text-[10px] text-[color:var(--app-text-muted)] uppercase'>
                     Avg Protein
                   </div>
-                  <div className='text-[19px] text-white font-extrabold'>
+                  <div className='text-[19px] text-[color:var(--app-text)] font-extrabold'>
                     {macroDerived.avgProtein}g
                   </div>
                 </div>
-                <div className='bg-[#0B0D17] border border-white/5 rounded-xl p-3'>
-                  <div className='text-[10px] text-gray-500 uppercase'>
+                <div className='bg-[var(--app-surface-2)] border border-[color:var(--app-border)] rounded-xl p-3'>
+                  <div className='text-[10px] text-[color:var(--app-text-muted)] uppercase'>
                     Avg Carbs
                   </div>
-                  <div className='text-[19px] text-white font-extrabold'>
+                  <div className='text-[19px] text-[color:var(--app-text)] font-extrabold'>
                     {macroDerived.avgCarbs}g
                   </div>
                 </div>
-                <div className='bg-[#0B0D17] border border-white/5 rounded-xl p-3 col-span-2'>
-                  <div className='text-[10px] text-gray-500 uppercase'>
+                <div className='bg-[var(--app-surface-2)] border border-[color:var(--app-border)] rounded-xl p-3 col-span-2'>
+                  <div className='text-[10px] text-[color:var(--app-text-muted)] uppercase'>
                     Avg Fat
                   </div>
-                  <div className='text-[19px] text-white font-extrabold'>
+                  <div className='text-[19px] text-[color:var(--app-text)] font-extrabold'>
                     {macroDerived.avgFat}g
                   </div>
                 </div>
@@ -1066,11 +1066,11 @@ export default function ProgressPage() {
           )}
 
           {tab === 'photos' && (
-            <div className='bg-[#131520] border border-white/5 rounded-[22px] p-[18px]'>
-              <div className='text-[14px] font-bold text-white mb-1'>
+            <div className='app-surface border rounded-[22px] p-[18px]'>
+              <div className='text-[14px] font-bold text-[color:var(--app-text)] mb-1'>
                 Progress Photos
               </div>
-              <div className='text-[12px] text-gray-400'>
+              <div className='text-[12px] text-[color:var(--app-text-muted)]'>
                 Photo timeline is coming soon. Weight, macro, and workout trends
                 are live.
               </div>
