@@ -1,11 +1,18 @@
 export interface Exercise {
   _id: string
   name: string
-  category: 'strength' | 'cardio'
+  category: 'strength' | 'cardio' | 'mobility' | 'plyometric'
   muscle_groups: string[]
+  primary_muscle?: string
+  secondary_muscles?: string[]
   equipment?: string
+  difficulty?: 'beginner' | 'intermediate' | 'advanced'
+  exercise_type?: 'compound' | 'isolation'
+  calories_per_minute?: number
+  instructions?: string[]
   created_by?: string
   is_custom: boolean
+  is_active: boolean
   created_at: string
 }
 
