@@ -14,10 +14,34 @@ export interface Food {
   carbs_per_100g: number
   fat_per_100g: number
   serving_sizes?: ServingSize[]
-  source: 'user' | 'openfoodfacts'
-  created_by?: string
+  category?:
+    | 'fruit'
+    | 'vegetable'
+    | 'grain'
+    | 'protein'
+    | 'dairy'
+    | 'snack'
+    | 'sweet'
+    | 'meal'
+    | 'street_food'
+    | 'restaurant'
+    | 'supplement'
+    | 'packaged'
+    | 'ingredient'
+  region?: 'global' | 'indian' | 'bengali' | 'asian' | 'western'
+  source:
+    | 'usda'
+    | 'indian_db'
+    | 'bengali_db'
+    | 'open_food_facts'
+    | 'restaurant'
+    | 'supplement'
+    | 'packaged'
+    | 'street_food'
+    | 'custom'
+  user_id?: string
   created_at: string
-  updated_at: string
+  isLocal?: boolean
 }
 
 export interface PopulatedFood {

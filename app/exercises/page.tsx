@@ -8,6 +8,7 @@ import { ItemCard } from '@/components/common/item-card'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Exercise } from '@/types'
 import { ExerciseEditDialog } from '@/components/exercise/exercise-edit-dialog'
+import { ExerciseDetailDialog } from '@/components/exercise/exercise-detail-dialog'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { FilterBar } from '@/components/common/filter-bar'
 import { Pagination } from '@/components/ui/pagination'
@@ -23,18 +24,23 @@ export default function ExercisesPage() {
     null,
   )
   const [showCreateModal, setShowCreateModal] = useState(false)
+  const [showDetailDialog, setShowDetailDialog] = useState(false)
+  const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(
+    null,
+  )
 
   // Filter and pagination state
   const [search, setSearch] = useState('')
   const [category, setCategory] = useState('all')
   const [muscleGroup, setMuscleGroup] = useState('all')
+  const [difficulty, setDifficulty] = useState('all')
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(1)
   const [total, setTotal] = useState(0)
 
   useEffect(() => {
     fetchExercises()
-  }, [search, category, muscleGroup, currentPage])
+  }, [search, category, muscleGroup, difficulty, currentPage])
 
   const fetchExercises = async () => {
     try {
@@ -50,6 +56,7 @@ export default function ExercisesPage() {
       if (search) params.append('search', search)
       if (category !== 'all') params.append('category', category)
       if (muscleGroup !== 'all') params.append('muscle_group', muscleGroup)
+      if (difficulty !== 'all') params.append('difficulty', difficulty)
 
       const res = await apiClient.get(
         `/api/exercises?${params.toString()}`,
@@ -86,6 +93,15 @@ export default function ExercisesPage() {
     if (exercise) {
       setEditingExercise(exercise)
       setShowEditDialog(true)
+    }
+  }
+
+  const handleClick = (id: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    const exercise = exercises.find((ex) => ex._id === id)
+    if (exercise) {
+      setSelectedExercise(exercise)
+      setShowDetailDialog(true)
     }
   }
 
@@ -157,6 +173,8 @@ export default function ExercisesPage() {
               { label: 'All', value: 'all' },
               { label: 'Strength', value: 'strength' },
               { label: 'Cardio', value: 'cardio' },
+              { label: 'Mobility', value: 'mobility' },
+              { label: 'Plyometric', value: 'plyometric' },
             ],
           },
           {
@@ -176,6 +194,21 @@ export default function ExercisesPage() {
               { label: 'Triceps', value: 'triceps' },
               { label: 'Legs', value: 'legs' },
               { label: 'Core', value: 'core' },
+            ],
+          },
+          {
+            label: 'Difficulty',
+            type: 'tabs',
+            value: difficulty,
+            onChange: (val) => {
+              setDifficulty(val)
+              setCurrentPage(1)
+            },
+            options: [
+              { label: 'All', value: 'all' },
+              { label: 'Beginner', value: 'beginner' },
+              { label: 'Intermediate', value: 'intermediate' },
+              { label: 'Advanced', value: 'advanced' },
             ],
           },
         ]}
@@ -205,7 +238,9 @@ export default function ExercisesPage() {
       <div className='px-6 pb-4'>
         {exercises.length === 0 && !loading ? (
           <div className='app-surface border rounded-2xl p-6 text-center'>
-            <div className='text-[color:var(--app-text-muted)] text-sm mb-2'>No exercises found</div>
+            <div className='text-[color:var(--app-text-muted)] text-sm mb-2'>
+              No exercises found
+            </div>
             <div className='text-[color:var(--app-text-muted)] text-xs'>
               Try adjusting your filters or create a new exercise
             </div>
@@ -216,11 +251,51 @@ export default function ExercisesPage() {
               key={exercise._id}
               id={exercise._id}
               title={exercise.name}
-              subtitle={exercise.muscle_groups.join(', ')}
-              icon={exercise.category === 'cardio' ? 'activity' : 'dumbbell'}
-              iconColor='#818CF8'
-              iconBg='rgba(129, 140, 248, 0.1)'
+              subtitle={
+                exercise.primary_muscle || exercise.muscle_groups.join(', ')
+              }
+              metadata={
+                exercise.difficulty
+                  ? exercise.difficulty.charAt(0).toUpperCase() +
+                    exercise.difficulty.slice(1)
+                  : undefined
+              }
+              secondaryMetadata={
+                exercise.calories_per_minute
+                  ? `${exercise.calories_per_minute} cal/min`
+                  : exercise.exercise_type
+                    ? exercise.exercise_type
+                    : undefined
+              }
+              icon={
+                exercise.category === 'cardio'
+                  ? 'activity'
+                  : exercise.category === 'mobility'
+                    ? 'stretch-horizontal'
+                    : exercise.category === 'plyometric'
+                      ? 'zap'
+                      : 'dumbbell'
+              }
+              iconColor={
+                exercise.category === 'cardio'
+                  ? '#10B981'
+                  : exercise.category === 'mobility'
+                    ? '#8B5CF6'
+                    : exercise.category === 'plyometric'
+                      ? '#F59E0B'
+                      : '#818CF8'
+              }
+              iconBg={
+                exercise.category === 'cardio'
+                  ? 'rgba(16, 185, 129, 0.1)'
+                  : exercise.category === 'mobility'
+                    ? 'rgba(139, 92, 246, 0.1)'
+                    : exercise.category === 'plyometric'
+                      ? 'rgba(245, 158, 11, 0.1)'
+                      : 'rgba(129, 140, 248, 0.1)'
+              }
               href='#'
+              onClick={handleClick}
               onEdit={handleEdit}
               onDelete={handleDelete}
               badge={exercise.is_custom ? 'Custom' : undefined}
@@ -234,6 +309,15 @@ export default function ExercisesPage() {
           onPageChange={setCurrentPage}
         />
       </div>
+
+      <ExerciseDetailDialog
+        isOpen={showDetailDialog}
+        onClose={() => {
+          setShowDetailDialog(false)
+          setSelectedExercise(null)
+        }}
+        exercise={selectedExercise}
+      />
 
       <ExerciseEditDialog
         isOpen={showEditDialog}
