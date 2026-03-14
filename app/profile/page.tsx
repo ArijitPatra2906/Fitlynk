@@ -314,6 +314,11 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     const { removeAuthToken } = await import('@/lib/auth/auth-token')
     await removeAuthToken()
+
+    // Reset step tracker state to prevent syncing previous user's data
+    const { stepTracker } = await import('@/lib/services/step-tracker')
+    stepTracker.resetTrackerState()
+
     window.location.href = '/login'
   }
 

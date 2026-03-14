@@ -406,6 +406,22 @@ class StepTrackerService {
     }
   }
 
+  /**
+   * Reset tracker state when user logs out or switches accounts.
+   * This prevents syncing previous user's step data to a new user.
+   */
+  resetTrackerState(): void {
+    console.log("[StepTracker] Resetting tracker state");
+    this.lastReportedSteps = -1;
+    this.lastSyncedSteps = -1;
+
+    // Stop any ongoing tracking
+    if (this.pollingInterval) {
+      clearInterval(this.pollingInterval);
+      this.pollingInterval = null;
+    }
+  }
+
   estimateDistance(steps: number): number {
     const averageStrideMeters = 0.762;
     const distanceKm = (steps * averageStrideMeters) / 1000;

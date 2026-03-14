@@ -174,7 +174,7 @@ export default function OnboardingPage() {
               value={formData.gender}
               onValueChange={(value) => handleChange('gender', value)}
             >
-              <SelectTrigger className='bg-transparent border-none text-[14px] text-white p-0 h-auto focus:ring-0'>
+              <SelectTrigger className='bg-transparent border-none text-[14px] text-white p-0 h-auto focus:ring-0 focus:outline-none focus-visible:ring-0 focus-visible:ring-offset-0'>
                 <SelectValue placeholder='Select gender' />
               </SelectTrigger>
               <SelectContent className='bg-[#1A1D2E] border-white/10'>
