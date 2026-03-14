@@ -14,13 +14,41 @@ export default function OnboardingPage() {
   const router = useRouter()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
+  const [isPhoneUser, setIsPhoneUser] = useState(false)
   const [formData, setFormData] = useState({
+    name: '',
     height: '',
     weight_kg: '',
     date_of_birth: '',
     gender: '',
     units: 'metric',
   })
+
+  useEffect(() => {
+    const checkUserAuthProvider = async () => {
+      try {
+        const { getAuthToken } = await import('@/lib/auth/auth-token')
+        const { apiClient } = await import('@/lib/api/client')
+        const token = await getAuthToken()
+
+        if (!token) return
+
+        const response = await apiClient.get('/api/auth/me', token)
+
+        if (response.success && response.data) {
+          const user = response.data
+          // Check if it's a phone user (has phone_number and name starts with "User_")
+          if (user.phone_number && user.name?.startsWith('User_')) {
+            setIsPhoneUser(true)
+          }
+        }
+      } catch (err) {
+        console.error('Error checking user auth provider:', err)
+      }
+    }
+
+    checkUserAuthProvider()
+  }, [])
 
   const handleChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }))
@@ -30,6 +58,12 @@ export default function OnboardingPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setError('')
+
+    // Validate required fields
+    if (isPhoneUser && !formData.name.trim()) {
+      setError('Please enter your name')
+      return
+    }
 
     if (
       !formData.height ||
@@ -53,15 +87,22 @@ export default function OnboardingPage() {
         return
       }
 
+      const profileData: any = {
+        height: parseFloat(formData.height),
+        weight_kg: parseFloat(formData.weight_kg),
+        date_of_birth: formData.date_of_birth,
+        gender: formData.gender,
+        units: formData.units,
+      }
+
+      // Add name for phone users
+      if (isPhoneUser && formData.name.trim()) {
+        profileData.name = formData.name.trim()
+      }
+
       const response = await apiClient.put(
         '/api/auth/profile',
-        {
-          height: parseFloat(formData.height),
-          weight_kg: parseFloat(formData.weight_kg),
-          date_of_birth: formData.date_of_birth,
-          gender: formData.gender,
-          units: formData.units,
-        },
+        profileData,
         token,
       )
 
@@ -100,6 +141,27 @@ export default function OnboardingPage() {
 
         {/* Onboarding Form */}
         <form onSubmit={handleSubmit} className='space-y-3'>
+          {/* Name (for phone users only) */}
+          {isPhoneUser && (
+            <div className='bg-[#131520] border border-white/10 rounded-2xl p-3.5'>
+              <label
+                htmlFor='name'
+                className='text-[11px] text-gray-400 uppercase tracking-wider mb-1 block'
+              >
+                Full Name
+              </label>
+              <input
+                id='name'
+                type='text'
+                value={formData.name}
+                onChange={(e) => handleChange('name', e.target.value)}
+                required
+                className='text-[14px] text-white bg-transparent border-none outline-none w-full placeholder:text-gray-600'
+                placeholder='Enter your full name'
+              />
+            </div>
+          )}
+
           {/* Gender */}
           <div className='bg-[#131520] border border-white/10 rounded-2xl p-3.5'>
             <label

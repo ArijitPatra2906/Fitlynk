@@ -4,6 +4,27 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Icon } from '@/components/ui/icon'
+import { PhoneLogin } from '@/components/auth/phone-login'
+
+function PhoneLoginButton({
+  onClick,
+  disabled,
+}: {
+  onClick: () => void
+  disabled: boolean
+}) {
+  return (
+    <button
+      onClick={onClick}
+      type='button'
+      disabled={disabled}
+      className='w-full py-3.5 rounded-2xl border border-white/15 bg-[#131520] text-white text-[14px] font-semibold flex items-center justify-center gap-2 disabled:opacity-50'
+    >
+      <Icon name='phone' size={18} />
+      Phone Number
+    </button>
+  )
+}
 
 function GoogleLoginButton({
   onClick,
@@ -31,8 +52,11 @@ function LoginPageContent() {
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
   const [googleLoading, setGoogleLoading] = useState(false)
+  const [phoneLoading, setPhoneLoading] = useState(false)
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
+  const [showPhoneLogin, setShowPhoneLogin] = useState(false)
+  const [isOtpMode, setIsOtpMode] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -141,19 +165,75 @@ function LoginPageContent() {
     }
   }
 
+  const handlePhoneLoginSuccess = async (idToken: string) => {
+    try {
+      setPhoneLoading(true)
+      setError('')
+      console.log('[Phone Login] Sending ID token to backend...')
+
+      const res = await fetch(
+        `${process.env.NEXT_PUBLIC_API_URL}/api/auth/phone-firebase`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken }),
+        },
+      )
+
+      const response = await res.json()
+      console.log('[Phone Login] Backend response:', response)
+
+      if (!res.ok) throw new Error(response.error || response.message || 'Authentication failed')
+
+      const { token, needsOnboarding } = response.data
+
+      if (!token) {
+        throw new Error('No auth token received from backend')
+      }
+
+      console.log('[Phone Login] Token received, saving...')
+      const { saveAuthToken } = await import('@/lib/auth/auth-token')
+      await saveAuthToken(token)
+
+      console.log('[Phone Login] Success! Navigating...')
+      router.push(needsOnboarding ? '/onboarding' : '/dashboard')
+    } catch (err: any) {
+      console.error('[Phone Login] Error:', err)
+      setError(err.message || 'Phone authentication failed')
+    } finally {
+      setPhoneLoading(false)
+    }
+  }
+
+  const handlePhoneLoginError = (errorMessage: string) => {
+    setError(errorMessage)
+  }
+
+  const handlePhoneButtonClick = () => {
+    setShowPhoneLogin(true)
+    setError('')
+  }
+
+  const handleBackToEmail = () => {
+    setShowPhoneLogin(false)
+    setIsOtpMode(false)
+    setError('')
+  }
 
   return (
     <div className='min-h-screen bg-[#0B0D17] flex items-center justify-center px-6 py-8'>
       <div className='w-full max-w-md space-y-6'>
         {/* Header */}
-        <div className='text-center'>
-          <h1 className='text-[28px] font-extrabold text-white tracking-tight'>
-            Welcome back
-          </h1>
-          <p className='text-[14px] text-gray-400 mt-2'>
-            Sign in to continue your journey
-          </p>
-        </div>
+        {!isOtpMode && (
+          <div className='text-center'>
+            <h1 className='text-[28px] font-extrabold text-white tracking-tight'>
+              Welcome back
+            </h1>
+            <p className='text-[14px] text-gray-400 mt-2'>
+              Sign in to continue your journey
+            </p>
+          </div>
+        )}
 
         {/* Error Message */}
         {error && (
@@ -162,8 +242,9 @@ function LoginPageContent() {
           </div>
         )}
 
-        {/* Form Fields */}
-        <form onSubmit={handleSubmit} className='space-y-3'>
+        {/* Email Login Form */}
+        {!showPhoneLogin && (
+          <form onSubmit={handleSubmit} className='space-y-3'>
           <div className='bg-[#131520] border border-white/10 rounded-2xl p-3.5'>
             <label
               htmlFor='email'
@@ -227,19 +308,65 @@ function LoginPageContent() {
             {loading ? 'Signing In...' : 'Sign In'}
           </button>
         </form>
+        )}
+
+        {/* Phone Login Form */}
+        {showPhoneLogin && (
+          <div className='space-y-5'>
+            <PhoneLogin
+              onSuccess={handlePhoneLoginSuccess}
+              onError={handlePhoneLoginError}
+              disabled={phoneLoading}
+              onOtpModeChange={setIsOtpMode}
+            />
+
+            {/* Divider */}
+            <div className='flex items-center gap-3'>
+              <div className='flex-1 h-px bg-white/10' />
+              <span className='text-[12px] text-gray-600'>or continue with</span>
+              <div className='flex-1 h-px bg-white/10' />
+            </div>
+
+            {/* Alternative Sign-in Methods */}
+            <div className='space-y-2'>
+              <button
+                type='button'
+                onClick={handleBackToEmail}
+                className='w-full py-3.5 rounded-2xl border border-white/15 bg-[#131520] text-white text-[14px] font-semibold flex items-center justify-center gap-2 hover:bg-[#1A1D2E] transition-colors'
+              >
+                <Icon name='mail' size={18} />
+                Email
+              </button>
+              <GoogleLoginButton
+                onClick={handleGoogleLogin}
+                disabled={googleLoading}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Divider */}
-        <div className='flex items-center gap-3'>
-          <div className='flex-1 h-px bg-white/10' />
-          <span className='text-[12px] text-gray-600'>or continue with</span>
-          <div className='flex-1 h-px bg-white/10' />
-        </div>
+        {!showPhoneLogin && (
+          <>
+            <div className='flex items-center gap-3'>
+              <div className='flex-1 h-px bg-white/10' />
+              <span className='text-[12px] text-gray-600'>or continue with</span>
+              <div className='flex-1 h-px bg-white/10' />
+            </div>
 
-        {/* OAuth Button */}
-        <GoogleLoginButton
-          onClick={handleGoogleLogin}
-          disabled={googleLoading}
-        />
+            {/* OAuth Buttons */}
+            <div className='space-y-2'>
+              <PhoneLoginButton
+                onClick={handlePhoneButtonClick}
+                disabled={phoneLoading}
+              />
+              <GoogleLoginButton
+                onClick={handleGoogleLogin}
+                disabled={googleLoading}
+              />
+            </div>
+          </>
+        )}
 
         {/* Sign Up Link */}
         <p className='text-center text-[13px] text-gray-400 pb-6'>
