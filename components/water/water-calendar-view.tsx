@@ -153,7 +153,7 @@ export function WaterCalendarView({
       </div>
 
       {/* Calendar Grid */}
-      <div className='flex-1 px-2 pt-4 pb-28'>
+      <div className='flex-1 px-2 pt-4 pb-6'>
         {/* Day Names */}
         <div className='grid grid-cols-7 gap-1 mb-2'>
           {dayNames.map((day) => (
@@ -235,10 +235,6 @@ export function WaterCalendarView({
             <div className='flex items-center gap-2'>
               <Icon name='crown' size={14} color='#F59E0B' />
               <span className='text-[11px] text-gray-400'>Goal Reached</span>
-            </div>
-            <div className='flex items-center gap-2'>
-              <div className='w-3 h-3 rounded-full bg-blue-500' />
-              <span className='text-[11px] text-gray-400'>Logged</span>
             </div>
           </div>
         </div>

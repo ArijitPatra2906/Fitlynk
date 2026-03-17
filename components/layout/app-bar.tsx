@@ -45,7 +45,7 @@ const stepsConfig: AppBarConfig = {
 }
 
 const waterConfig: AppBarConfig = {
-  title: 'Water',
+  title: 'Water Tracker',
   showBack: false,
   showNotifications: true,
   showAvatar: true,
