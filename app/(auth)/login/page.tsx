@@ -221,7 +221,24 @@ function LoginPageContent() {
   }
 
   return (
-    <div className='min-h-screen bg-[#0B0D17] flex items-center justify-center px-6 py-8'>
+    <div className='min-h-screen bg-[#0B0D17] flex items-center justify-center px-6 py-8 relative'>
+      {/* Full-screen loading overlay */}
+      {(googleLoading || phoneLoading) && (
+        <div className='fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-center justify-center'>
+          <div className='bg-[#131520] border border-white/10 rounded-2xl p-8 flex flex-col items-center gap-4'>
+            <div className='w-12 h-12 border-4 border-blue-500/30 border-t-blue-500 rounded-full animate-spin' />
+            <div className='text-center'>
+              <div className='text-[16px] font-bold text-white mb-1'>
+                {googleLoading ? 'Signing in with Google' : 'Signing in with Phone'}
+              </div>
+              <div className='text-[13px] text-gray-400'>
+                Please wait a moment...
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className='w-full max-w-md space-y-6'>
         {/* Header */}
         {!isOtpMode && (
