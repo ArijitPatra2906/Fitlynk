@@ -756,8 +756,8 @@ export default function DashboardPage() {
                 </div>
               </button>
 
-              {/* Steps Card */}
-              <button
+              {/* Steps Card - Temporarily disabled */}
+              {/* <button
                 className='order-3 col-span-2 bg-[#131520] border border-white/5 rounded-2xl p-3.5 text-left w-full hover:border-purple-500/30 transition-colors min-h-[128px] flex flex-col'
                 onClick={() => router.push('/steps')}
               >
@@ -791,7 +791,7 @@ export default function DashboardPage() {
                     Tap to add steps and view daily logs
                   </div>
                 </div>
-              </button>
+              </button> */}
 
               {/* Active Minutes Card */}
               <div className='order-2 bg-[#131520] border border-white/5 rounded-2xl p-3.5 min-h-[154px] flex flex-col'>

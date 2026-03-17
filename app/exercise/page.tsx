@@ -330,7 +330,8 @@ export default function ExercisePage() {
         </button>
       </div>
 
-      <Link
+      {/* Steps Tracker - Temporarily disabled */}
+      {/* <Link
         href='/steps'
         className='mb-4 bg-[#131520] border border-white/10 rounded-2xl p-3.5 flex items-center justify-between'
       >
@@ -348,7 +349,7 @@ export default function ExercisePage() {
           </div>
         </div>
         <Icon name='chevronRight' size={16} color='#64748B' />
-      </Link>
+      </Link> */}
 
       {/* Recent Workouts */}
       <div className='flex items-center justify-between mb-3'>

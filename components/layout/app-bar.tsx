@@ -139,7 +139,8 @@ const notificationSettingsConfig: AppBarConfig = {
 
 const routeConfigs: Record<string, AppBarConfig> = {
   '/dashboard': dashboardConfig,
-  '/steps': stepsConfig,
+  // Temporarily disabled - step log not working properly
+  // '/steps': stepsConfig,
   '/water': waterConfig,
   '/exercise': exerciseConfig,
   '/nutrition': nutritionConfig,

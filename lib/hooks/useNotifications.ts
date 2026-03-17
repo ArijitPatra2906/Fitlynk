@@ -39,7 +39,9 @@ export function useNotifications() {
 
         case 'step_goal_reached':
         case 'step_sync_complete':
-          router.push('/steps');
+          // Temporarily disabled - step log not working properly
+          // router.push('/steps');
+          router.push('/dashboard');
           break;
 
         case 'water_goal_reached':

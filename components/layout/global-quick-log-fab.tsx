@@ -25,7 +25,8 @@ const QUICK_ACTIONS = [
     color: '#818CF8',
     href: '/exercise',
   },
-  { label: 'Log Steps', icon: 'activity', color: '#A855F7', href: '/steps' },
+  // Temporarily disabled - step log not working properly
+  // { label: 'Log Steps', icon: 'activity', color: '#A855F7', href: '/steps' },
   { label: 'Log Water', icon: 'water', color: '#3B82F6', href: '/water' },
   {
     label: 'Log Weight',

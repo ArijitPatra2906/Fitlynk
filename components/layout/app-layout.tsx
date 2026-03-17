@@ -15,7 +15,8 @@ export function AppLayout({ children }: AppLayoutProps) {
   // Pages that should show the bottom navigation
   const pagesWithBottomNav = [
     '/dashboard',
-    '/steps',
+    // Temporarily disabled - step log not working properly
+    // '/steps',
     '/water',
     '/exercise',
     '/nutrition',
@@ -39,7 +40,8 @@ export function AppLayout({ children }: AppLayoutProps) {
   // Pages that need the full layout wrapper (header + content + nav)
   const pagesWithLayout = [
     '/dashboard',
-    '/steps',
+    // Temporarily disabled - step log not working properly
+    // '/steps',
     '/water',
     '/exercise',
     '/nutrition',
