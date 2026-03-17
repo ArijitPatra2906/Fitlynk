@@ -738,3 +738,68 @@ export function NotificationSettingsSkeleton() {
     </div>
   )
 }
+
+// Todo-specific skeleton components
+function TodoItemSkeleton() {
+  return (
+    <div className='bg-[#131520] border border-white/10 rounded-xl overflow-hidden p-3'>
+      <div className='flex items-start gap-2.5'>
+        {/* Checkbox */}
+        <Skeleton className='w-5 h-5 rounded-md flex-shrink-0 mt-0.5' />
+
+        {/* Content */}
+        <div className='flex-1 min-w-0'>
+          <Skeleton className='h-[14px] w-3/4 mb-1' />
+          <Skeleton className='h-[12px] w-full mb-1' />
+          <Skeleton className='h-[12px] w-2/3 mb-2' />
+
+          {/* Meta Info */}
+          <div className='flex items-center gap-1.5'>
+            <Skeleton className='w-1.5 h-1.5 rounded-full' />
+            <Skeleton className='h-[10px] w-12' />
+            <Skeleton className='h-[10px] w-1' />
+            <Skeleton className='h-[10px] w-16' />
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className='flex gap-1.5 flex-shrink-0'>
+          <Skeleton className='w-7 h-7 rounded-lg' />
+          <Skeleton className='w-7 h-7 rounded-lg' />
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export function TodosPageSkeleton() {
+  return (
+    <div className='px-4 pt-3 pb-28'>
+      {/* Active Todos Section */}
+      <div className='mb-4'>
+        <div className='text-[11px] font-bold text-gray-400 mb-2 flex items-center gap-1.5 uppercase tracking-wide'>
+          <Skeleton className='w-1 h-1 rounded-full' />
+          <Skeleton className='h-[11px] w-24' />
+        </div>
+        <div className='space-y-2'>
+          {[...Array(3)].map((_, i) => (
+            <TodoItemSkeleton key={i} />
+          ))}
+        </div>
+      </div>
+
+      {/* Completed Todos Section */}
+      <div>
+        <div className='text-[11px] font-bold text-gray-400 mb-2 flex items-center gap-1.5 uppercase tracking-wide'>
+          <Skeleton className='w-1 h-1 rounded-full' />
+          <Skeleton className='h-[11px] w-28' />
+        </div>
+        <div className='space-y-2'>
+          {[...Array(2)].map((_, i) => (
+            <TodoItemSkeleton key={i} />
+          ))}
+        </div>
+      </div>
+    </div>
+  )
+}

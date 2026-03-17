@@ -8,7 +8,7 @@ const tabs = [
   { id: 'home', href: '/dashboard', icon: 'home', label: 'Home' },
   { id: 'exercise', href: '/exercise', icon: 'dumbbell', label: 'Exercise' },
   { id: 'nutrition', href: '/nutrition', icon: 'utensils', label: 'Nutrition' },
-  { id: 'progress', href: '/progress', icon: 'chart', label: 'Progress' },
+  { id: 'todos', href: '/todos', icon: 'checkSquare', label: 'Todos' },
   { id: 'profile', href: '/profile', icon: 'user', label: 'Profile' },
 ]
 
@@ -23,7 +23,7 @@ export function BottomNav() {
     if (tabId === 'home' && (pathname?.startsWith('/dashboard'))) return true
     if (tabId === 'exercise' && pathname?.startsWith('/exercise')) return true
     if (tabId === 'nutrition' && (pathname?.startsWith('/nutrition') || pathname?.startsWith('/food-search'))) return true
-    if (tabId === 'progress' && pathname?.startsWith('/progress')) return true
+    if (tabId === 'todos' && pathname?.startsWith('/todos')) return true
     if (tabId === 'profile' && (pathname?.startsWith('/profile') || pathname?.startsWith('/settings'))) return true
 
     return false

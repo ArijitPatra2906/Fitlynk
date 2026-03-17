@@ -12,12 +12,14 @@ const WITH_BOTTOM_NAV = [
   '/water',
   '/exercise',
   '/nutrition',
+  '/todos',
   '/progress',
   '/profile',
   '/settings/goals',
 ]
 
 const QUICK_ACTIONS = [
+  { label: 'Add Todo', icon: 'checkSquare', color: '#60A5FA', href: '/todos?add=true' },
   { label: 'Log Meal', icon: 'utensils', color: '#F59E0B', href: '/nutrition' },
   {
     label: 'Log Workout',

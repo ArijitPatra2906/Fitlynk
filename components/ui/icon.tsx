@@ -280,6 +280,38 @@ const iconPaths: Record<string, React.ReactNode> = {
       <line x1='8' y1='12' x2='16' y2='12' />
     </>
   ),
+  checkSquare: (
+    <>
+      <path d='M9 11l3 3L22 4' />
+      <path d='M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11' />
+    </>
+  ),
+  square: <rect x='3' y='3' width='18' height='18' rx='2' ry='2' />,
+  checkCircle: (
+    <>
+      <circle cx='12' cy='12' r='10' />
+      <polyline points='9 12 11 14 15 10' />
+    </>
+  ),
+  circle: <circle cx='12' cy='12' r='10' />,
+  list: (
+    <>
+      <line x1='8' y1='6' x2='21' y2='6' />
+      <line x1='8' y1='12' x2='21' y2='12' />
+      <line x1='8' y1='18' x2='21' y2='18' />
+      <line x1='3' y1='6' x2='3.01' y2='6' />
+      <line x1='3' y1='12' x2='3.01' y2='12' />
+      <line x1='3' y1='18' x2='3.01' y2='18' />
+    </>
+  ),
+  calendar: (
+    <>
+      <rect x='3' y='4' width='18' height='18' rx='2' ry='2' />
+      <line x1='16' y1='2' x2='16' y2='6' />
+      <line x1='8' y1='2' x2='8' y2='6' />
+      <line x1='3' y1='10' x2='21' y2='10' />
+    </>
+  ),
 }
 
 const lucideIcons: Record<string, LucideIcon> = {

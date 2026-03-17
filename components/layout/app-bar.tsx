@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { Icon } from '@/components/ui/icon'
 import { Skeleton } from '@/components/ui/skeleton'
 import { NotificationBell } from '@/components/notifications/notification-bell'
+import Link from 'next/link'
 
 interface AppBarConfig {
   title?: string
@@ -64,6 +65,13 @@ const progressConfig: AppBarConfig = {
   showAvatar: true,
 }
 
+const todosConfig: AppBarConfig = {
+  title: 'Todos',
+  showBack: false,
+  showNotifications: true,
+  showAvatar: true,
+}
+
 const workoutConfig: AppBarConfig = {
   title: 'Push A',
   showBack: true,
@@ -117,16 +125,12 @@ const notificationsConfig: AppBarConfig = {
   showNotifications: false,
   showAvatar: true,
   actions: (
-    <button
-      onClick={() => {
-        if (typeof window !== 'undefined') {
-          window.location.href = '/settings/notifications'
-        }
-      }}
+    <Link
+      href='/settings/notifications'
       className='w-10 h-10 rounded-xl app-surface border border-[color:var(--app-border)] flex items-center justify-center'
     >
       <Icon name='settings' size={18} color='#64748B' />
-    </button>
+    </Link>
   ),
 }
 
@@ -144,6 +148,7 @@ const routeConfigs: Record<string, AppBarConfig> = {
   '/water': waterConfig,
   '/exercise': exerciseConfig,
   '/nutrition': nutritionConfig,
+  '/todos': todosConfig,
   '/progress': progressConfig,
   '/workout': workoutConfig,
   '/food-search': foodSearchConfig,
