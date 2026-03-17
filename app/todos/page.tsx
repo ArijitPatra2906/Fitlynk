@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { Icon } from '@/components/ui/icon'
 import { TodoItem } from '@/components/todos/todo-item'
@@ -33,7 +33,7 @@ type DateRangeFilter =
   | '3months'
 type ViewMode = 'list' | 'calendar'
 
-export default function TodosPage() {
+function TodosPageContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const [todos, setTodos] = useState<Todo[]>([])
@@ -471,5 +471,13 @@ export default function TodosPage() {
         prefilledDueDate={prefilledDueDate}
       />
     </div>
+  )
+}
+
+export default function TodosPage() {
+  return (
+    <Suspense fallback={<TodosPageSkeleton />}>
+      <TodosPageContent />
+    </Suspense>
   )
 }
