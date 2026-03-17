@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { Icon } from '@/components/ui/icon'
 import { Pagination } from '@/components/ui/pagination'
 import { WaterPageSkeleton } from '@/components/ui/skeleton'
+import { WaterCalendarView } from '@/components/water/water-calendar-view'
+import { WaterDayDetailModal } from '@/components/water/water-day-detail-modal'
 import { toast } from 'sonner'
 
 type WaterFilter = 7 | 30
@@ -107,6 +109,8 @@ export default function WaterPage() {
     total: 0,
     totalPages: 1,
   })
+  const [isDayDetailOpen, setIsDayDetailOpen] = useState(false)
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null)
 
   const progressPercent = useMemo(() => {
     if (waterGoalMl <= 0) return 0
@@ -288,7 +292,7 @@ export default function WaterPage() {
     const safeAmount = Math.max(1, Math.min(MAX_WATER_LOG_ML, amountMl))
     try {
       setSavingWater(true)
-      const { getAuthToken } = await import('@/lib/auth/auth-token')
+      const { getAuthToken} = await import('@/lib/auth/auth-token')
       const { apiClient } = await import('@/lib/api/client')
       const token = await getAuthToken()
       if (!token) {
@@ -319,17 +323,41 @@ export default function WaterPage() {
     }
   }
 
+  const handleDateClick = (date: Date) => {
+    setSelectedDate(date)
+    setIsDayDetailOpen(true)
+  }
+
+  const getLogsForDate = (date: Date) => {
+    const year = date.getFullYear()
+    const month = String(date.getMonth() + 1).padStart(2, '0')
+    const day = String(date.getDate()).padStart(2, '0')
+    const dateStr = `${year}-${month}-${day}`
+
+    return logs.filter((log) => {
+      if (!log.date) return false
+      const logDateStr = log.date.split('T')[0]
+      return logDateStr === dateStr
+    })
+  }
+
   return (
     <>
       {loading ? (
         <WaterPageSkeleton />
       ) : (
-        <div className='px-6 pt-4 pb-24'>
-          {error && (
-            <div className='mb-4 rounded-xl border px-4 py-2 text-sm bg-red-500/10 border-red-500 text-red-400'>
-              {error}
-            </div>
-          )}
+        <div className='relative h-full flex flex-col'>
+          {/* Header */}
+          <div className='px-4 pt-4 pb-3 border-b border-white/5'>
+            {error && (
+              <div className='mb-3 rounded-xl border px-4 py-2 text-sm bg-red-500/10 border-red-500 text-red-400'>
+                {error}
+              </div>
+            )}
+            <h1 className='text-[18px] font-bold text-white'>Water Tracker</h1>
+          </div>
+
+          <div className='flex-1 overflow-y-auto px-6 pt-4 pb-24'>
 
           <div className='bg-gradient-to-br from-[#1a1f35] to-[#102346] border border-blue-500/20 rounded-2xl p-4 mb-4'>
             <div className='flex items-center gap-2 mb-2'>
@@ -430,130 +458,22 @@ export default function WaterPage() {
             </div>
           </div>
 
-          <div className='flex items-center justify-between mb-3'>
-            <div className='text-[15px] text-[color:var(--app-text)] font-bold'>Water Logs</div>
-            <div className='flex gap-2'>
-              <button
-                type='button'
-                onClick={() => handleFilterChange(7)}
-                className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold ${
-                  filter === 7
-                    ? 'bg-blue-600 text-white'
-                    : 'app-surface border text-[color:var(--app-text-muted)]'
-                }`}
-              >
-                Last 7 days
-              </button>
-              <button
-                type='button'
-                onClick={() => handleFilterChange(30)}
-                className={`px-3 py-1.5 rounded-lg text-[12px] font-semibold ${
-                  filter === 30
-                    ? 'bg-blue-600 text-white'
-                    : 'app-surface border text-[color:var(--app-text-muted)]'
-                }`}
-              >
-                Last 30 days
-              </button>
-            </div>
+          {/* Calendar View */}
+          <WaterCalendarView
+            logs={logs}
+            waterGoalMl={waterGoalMl}
+            onDateClick={handleDateClick}
+          />
           </div>
 
-          {logsLoading ? (
-            <div className='text-[color:var(--app-text-muted)] text-sm'>Loading logs...</div>
-          ) : logs.length === 0 ? (
-            <div className='text-[color:var(--app-text-muted)] text-sm'>
-              No water logs in this range.
-            </div>
-          ) : (
-            <div className='space-y-2'>
-              {groupedLogs.map((group) => {
-                const isOpen = expandedDay === group.day
-                const hitGoal = group.total_ml >= waterGoalMl
-                return (
-                  <div
-                    key={group.day}
-                    className='app-surface border rounded-xl p-3'
-                  >
-                    <div className='grid grid-cols-[1fr_auto_auto] items-center gap-3'>
-                      <div className='min-w-0'>
-                        <div className='text-[13px] text-[color:var(--app-text)] font-semibold'>
-                          {formatDayTitle(group.day)}
-                        </div>
-                        <div className='text-[11px] text-[color:var(--app-text-muted)]'>
-                          {group.entries.length} logs
-                        </div>
-                      </div>
-
-                      <div className='text-right justify-self-end'>
-                        {hitGoal && (
-                          <div className='flex justify-end mb-0.5'>
-                            <Icon name='crown' size={15} color='#F59E0B' />
-                          </div>
-                        )}
-                        <div className='text-[20px] text-blue-500 font-bold leading-none'>
-                          {Math.round(group.total_ml)}
-                        </div>
-                        <div className='text-[11px] text-[color:var(--app-text-muted)]'>ml</div>
-                      </div>
-
-                      <button
-                        type='button'
-                        onClick={() =>
-                          setExpandedDay((prev) =>
-                            prev === group.day ? null : group.day,
-                          )
-                        }
-                        className='justify-self-end w-8 h-8 rounded-xl border border-[color:var(--app-border)] app-surface hover:bg-[color:var(--app-surface-2)] transition-colors flex items-center justify-center'
-                        aria-label={
-                          isOpen ? 'Collapse day logs' : 'Expand day logs'
-                        }
-                      >
-                        <Icon
-                          name={isOpen ? 'x' : 'plus'}
-                          size={14}
-                          color={isOpen ? '#64748B' : '#94A3B8'}
-                        />
-                      </button>
-                    </div>
-
-                    {hitGoal && (
-                      <div className='mt-1 text-[11px] text-amber-500'>
-                        Goal achieved
-                      </div>
-                    )}
-
-                    {isOpen && (
-                      <div className='mt-3 pt-3 border-t border-[color:var(--app-border)] space-y-2'>
-                        {group.entries.map((entry) => (
-                          <div
-                            key={entry._id}
-                            className='flex items-center justify-between rounded-lg bg-[var(--app-surface-2)] px-3 py-2'
-                          >
-                            <div className='text-[12px] text-[color:var(--app-text-muted)]'>
-                              {formatTime(entry.created_at) || 'No time'}
-                            </div>
-                            <div className='text-[13px] font-semibold text-[color:var(--app-text)]'>
-                              {Math.round(entry.amount_ml)} ml
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-
-          {pagination.total > PAGE_SIZE && (
-            <div className='mt-4'>
-              <Pagination
-                currentPage={page}
-                totalPages={pagination.totalPages}
-                onPageChange={setPage}
-              />
-            </div>
-          )}
+          {/* Water Day Detail Modal */}
+          <WaterDayDetailModal
+            isOpen={isDayDetailOpen}
+            onClose={() => setIsDayDetailOpen(false)}
+            date={selectedDate}
+            logs={selectedDate ? getLogsForDate(selectedDate) : []}
+            waterGoalMl={waterGoalMl}
+          />
         </div>
       )}
     </>
