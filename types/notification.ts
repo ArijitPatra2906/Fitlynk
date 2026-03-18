@@ -16,6 +16,7 @@ export type NotificationType =
   | 'workout_reminder'
   | 'water_reminder'
   | 'meal_reminder'
+  | 'todo_reminder'
   | 'evening_summary'
   | 'streak_protection'
   | 'incomplete_goals'
@@ -37,6 +38,7 @@ export interface Notification {
   title: string;
   body: string;
   data?: Record<string, any>;
+  redirect_path?: string;
   read: boolean;
   sent_at?: string;
   read_at?: string;

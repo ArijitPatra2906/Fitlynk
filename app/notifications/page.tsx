@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { Icon } from '@/components/ui/icon'
 import { apiClient } from '@/lib/api/client'
@@ -34,6 +34,8 @@ const getNotificationIcon = (type: string): string => {
       return 'calendar'
     case 'goal_update_reminder':
       return 'target'
+    case 'todo_reminder':
+      return 'checkSquare'
     default:
       return 'bell'
   }
@@ -57,8 +59,10 @@ const getNotificationColor = (type: string): string => {
     case 'morning_checkin':
     case 'evening_summary':
       return '#8B5CF6' // Purple
+    case 'todo_reminder':
+      return '#F59E0B' // Amber
     default:
-      return '#3B82F6' // Gray
+      return '#3B82F6' // Blue
   }
 }
 
@@ -83,36 +87,91 @@ export default function NotificationsPage() {
   const router = useRouter()
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadingMore, setLoadingMore] = useState(false)
   const [filter, setFilter] = useState<'all' | 'unread'>('all')
+  const [page, setPage] = useState(1)
+  const [hasMore, setHasMore] = useState(true)
+  const observerTarget = useRef<HTMLDivElement>(null)
 
-  const fetchNotifications = async () => {
+  const ITEMS_PER_PAGE = 10
+
+  const fetchNotifications = async (pageNum: number, append = false) => {
     try {
+      if (append) {
+        setLoadingMore(true)
+      } else {
+        setLoading(true)
+      }
+
       const token = await getAuthToken()
       if (!token) {
         router.push('/login')
         return
       }
 
-      const queryParams = filter === 'unread' ? '?read=false' : ''
+      const readParam = filter === 'unread' ? 'read=false&' : ''
+      const queryParams = `?${readParam}page=${pageNum}&limit=${ITEMS_PER_PAGE}`
       const response = await apiClient.get(
         `/api/notifications${queryParams}`,
         token,
       )
 
       if (response.success && response.data) {
-        setNotifications(response.data.notifications || [])
+        const newNotifications = response.data.notifications || []
+        const pagination = response.data.pagination
+
+        if (append) {
+          setNotifications((prev) => [...prev, ...newNotifications])
+        } else {
+          setNotifications(newNotifications)
+        }
+
+        // Check if there are more notifications to load
+        if (pagination) {
+          setHasMore(pagination.page < pagination.pages)
+        } else {
+          setHasMore(newNotifications.length === ITEMS_PER_PAGE)
+        }
       }
     } catch (error) {
       console.error('Error fetching notifications:', error)
       toast.error('Failed to load notifications')
     } finally {
       setLoading(false)
+      setLoadingMore(false)
     }
   }
 
   useEffect(() => {
-    fetchNotifications()
+    setPage(1)
+    setHasMore(true)
+    fetchNotifications(1, false)
   }, [filter])
+
+  // Infinite scroll observer
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting && hasMore && !loading && !loadingMore) {
+          const nextPage = page + 1
+          setPage(nextPage)
+          fetchNotifications(nextPage, true)
+        }
+      },
+      { threshold: 0.1 },
+    )
+
+    const currentTarget = observerTarget.current
+    if (currentTarget) {
+      observer.observe(currentTarget)
+    }
+
+    return () => {
+      if (currentTarget) {
+        observer.unobserve(currentTarget)
+      }
+    }
+  }, [hasMore, loading, loadingMore, page])
 
   const handleMarkAsRead = async (notificationId: string) => {
     try {
@@ -202,6 +261,18 @@ export default function NotificationsPage() {
     }
   }
 
+  const handleNotificationClick = async (notification: Notification) => {
+    // Mark as read if not already
+    if (!notification.read) {
+      await handleMarkAsRead(notification._id)
+    }
+
+    // Navigate to redirect path if available
+    if (notification.redirect_path) {
+      router.push(notification.redirect_path)
+    }
+  }
+
   const unreadCount = notifications.filter((n) => !n.read).length
 
   if (loading) {
@@ -259,7 +330,7 @@ export default function NotificationsPage() {
       </div>
 
       {/* Notifications List */}
-      <div className='flex-1 overflow-y-auto px-6 pt-4 pb-[88px]'>
+      <div className='flex-1 overflow-y-auto px-6 pt-4 pb-4'>
         {notifications.length === 0 ? (
           <div className='app-surface border border-[color:var(--app-border)] rounded-2xl p-8 text-center'>
             <div className='w-16 h-16 mx-auto mb-4 rounded-2xl bg-blue-500/10 flex items-center justify-center'>
@@ -285,8 +356,13 @@ export default function NotificationsPage() {
               return (
                 <div
                   key={notification._id}
-                  className={`relative app-surface border border-[color:var(--app-border)] rounded-2xl p-3 ${
+                  onClick={() => handleNotificationClick(notification)}
+                  className={`relative app-surface border border-[color:var(--app-border)] rounded-2xl p-3 transition-all ${
                     !notification.read ? 'bg-blue-500/5 border-blue-500/20' : ''
+                  } ${
+                    notification.redirect_path
+                      ? 'cursor-pointer hover:bg-[color:var(--app-surface-2)] active:scale-[0.98]'
+                      : ''
                   }`}
                 >
                   <div className='flex items-start gap-3'>
@@ -342,6 +418,21 @@ export default function NotificationsPage() {
                 </div>
               )
             })}
+
+            {/* Infinite scroll observer target */}
+            <div ref={observerTarget} className='h-4' />
+
+            {/* Loading more indicator */}
+            {loadingMore && (
+              <div className='flex justify-center py-6'>
+                <div className='flex items-center gap-2'>
+                  <div className='w-4 h-4 border-2 border-blue-500/30 border-t-blue-500 rounded-full animate-spin' />
+                  <span className='text-[13px] text-[color:var(--app-text-muted)]'>
+                    Loading more...
+                  </span>
+                </div>
+              </div>
+            )}
           </div>
         )}
       </div>

@@ -8,6 +8,7 @@ import { TodoModal } from '@/components/todos/todo-modal'
 import { CalendarView } from '@/components/todos/calendar-view'
 import { DayDetailModal } from '@/components/todos/day-detail-modal'
 import { TodosPageSkeleton } from '@/components/ui/skeleton'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 interface Todo {
   _id: string
@@ -16,6 +17,7 @@ interface Todo {
   completed: boolean
   completed_at?: string
   due_date?: string
+  reminder_time?: string
   priority?: 'low' | 'medium' | 'high'
   recurs_daily?: boolean
   created_at: string
@@ -40,13 +42,15 @@ function TodosPageContent() {
   const [loading, setLoading] = useState(true)
   const [viewMode, setViewMode] = useState<ViewMode>('list')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all')
-  const [dateRange, setDateRange] = useState<DateRangeFilter>('all')
+  const [dateRange, setDateRange] = useState<DateRangeFilter>('today')
   const [searchQuery, setSearchQuery] = useState('')
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingTodo, setEditingTodo] = useState<Todo | null>(null)
   const [isDayDetailOpen, setIsDayDetailOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [prefilledDueDate, setPrefilledDueDate] = useState<string | null>(null)
+  const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false)
+  const [todoToDelete, setTodoToDelete] = useState<string | null>(null)
 
   const fetchTodos = useCallback(async () => {
     setLoading(true)
@@ -145,8 +149,13 @@ function TodosPageContent() {
     }
   }
 
-  const handleDelete = async (todoId: string) => {
-    if (!confirm('Are you sure you want to delete this todo?')) return
+  const handleDelete = (todoId: string) => {
+    setTodoToDelete(todoId)
+    setIsConfirmDeleteOpen(true)
+  }
+
+  const confirmDelete = async () => {
+    if (!todoToDelete) return
 
     try {
       const { getAuthToken } = await import('@/lib/auth/auth-token')
@@ -155,13 +164,15 @@ function TodosPageContent() {
 
       if (!token) return
 
-      const response = await apiClient.delete(`/api/todos/${todoId}`, token)
+      const response = await apiClient.delete(`/api/todos/${todoToDelete}`, token)
 
       if (response.success) {
-        setTodos((prev) => prev.filter((todo) => todo._id !== todoId))
+        setTodos((prev) => prev.filter((todo) => todo._id !== todoToDelete))
       }
     } catch (error) {
       console.error('Error deleting todo:', error)
+    } finally {
+      setTodoToDelete(null)
     }
   }
 
@@ -469,6 +480,21 @@ function TodosPageContent() {
         onSave={handleSave}
         todo={editingTodo}
         prefilledDueDate={prefilledDueDate}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <ConfirmDialog
+        isOpen={isConfirmDeleteOpen}
+        onClose={() => {
+          setIsConfirmDeleteOpen(false)
+          setTodoToDelete(null)
+        }}
+        onConfirm={confirmDelete}
+        title="Delete Todo?"
+        message="Are you sure you want to delete this todo? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
       />
     </div>
   )

@@ -37,7 +37,7 @@ export function ConfirmDialog({
         };
       case "warning":
         return {
-          icon: "alert-triangle",
+          icon: "alertTriangle",
           iconColor: "#F59E0B",
           iconBg: "rgba(245, 158, 11, 0.1)",
           buttonBg: "bg-amber-500",

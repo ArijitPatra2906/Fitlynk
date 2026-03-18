@@ -10,6 +10,7 @@ interface Todo {
   completed: boolean
   completed_at?: string
   due_date?: string
+  reminder_time?: string
   priority?: 'low' | 'medium' | 'high'
   recurs_daily?: boolean
   created_at: string
@@ -29,6 +30,7 @@ export function TodoModal({ isOpen, onClose, onSave, todo, prefilledDueDate }: T
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium')
   const [dueDate, setDueDate] = useState('')
+  const [reminderTime, setReminderTime] = useState('')
   const [recursDaily, setRecursDaily] = useState(false)
 
   // Get today's date in YYYY-MM-DD format for min date
@@ -43,12 +45,14 @@ export function TodoModal({ isOpen, onClose, onSave, todo, prefilledDueDate }: T
       setDueDate(
         todo.due_date ? todo.due_date.split('T')[0] : ''
       )
+      setReminderTime(todo.reminder_time || '')
       setRecursDaily(todo.recurs_daily || false)
     } else {
       setTitle('')
       setDescription('')
       setPriority('medium')
       setDueDate(prefilledDueDate || '')
+      setReminderTime('')
       setRecursDaily(false)
     }
   }, [todo, isOpen, prefilledDueDate])
@@ -61,6 +65,7 @@ export function TodoModal({ isOpen, onClose, onSave, todo, prefilledDueDate }: T
       description: description.trim() || undefined,
       priority,
       due_date: dueDate || undefined,
+      reminder_time: reminderTime || undefined,
       recurs_daily: recursDaily,
     }
 
@@ -206,6 +211,37 @@ export function TodoModal({ isOpen, onClose, onSave, todo, prefilledDueDate }: T
                 Clear date
               </button>
             )}
+          </div>
+
+          {/* Reminder Time */}
+          <div className='mb-4'>
+            <label className='text-[12px] text-gray-400 font-semibold uppercase tracking-wide mb-2 block'>
+              Reminder Time
+            </label>
+            <div className='relative'>
+              <input
+                type='time'
+                value={reminderTime}
+                onChange={(e) => setReminderTime(e.target.value)}
+                className='w-full bg-[#1a1f35] border border-white/10 rounded-2xl px-4 py-3.5 text-[15px] font-medium text-white focus:outline-none focus:border-blue-500/50 transition-colors'
+              />
+              <div className='absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none'>
+                <Icon name='clock' size={18} color='#64748B' />
+              </div>
+            </div>
+            {reminderTime && (
+              <button
+                type='button'
+                onClick={() => setReminderTime('')}
+                className='mt-2.5 text-[12px] font-semibold text-red-400 hover:text-red-300 transition-colors flex items-center gap-1.5'
+              >
+                <Icon name='x' size={14} color='currentColor' />
+                Clear time
+              </button>
+            )}
+            <p className='text-[11px] text-gray-500 mt-2'>
+              You'll receive a notification at this time
+            </p>
           </div>
 
           {/* Repeat Daily Toggle */}
