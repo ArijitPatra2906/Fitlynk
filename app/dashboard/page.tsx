@@ -12,7 +12,7 @@ import {
   DashboardActivitySkeleton,
 } from '@/components/ui/skeleton'
 import { ItemCard } from '@/components/common/item-card'
-import { stepTracker } from '@/lib/services/step-tracker'
+// import { stepTracker } from '@/lib/services/step-tracker'
 
 interface DailyNutrition {
   calories: number
@@ -140,31 +140,32 @@ export default function DashboardPage() {
     setRecentActivity(snapshot.recentActivity)
   }
 
-  const refreshActiveMinutesFromBackend = async (token?: string) => {
-    try {
-      const { getAuthToken } = await import('@/lib/auth/auth-token')
-      const { apiClient } = await import('@/lib/api/client')
-      const authToken = token || (await getAuthToken())
-      if (!authToken) return
+  // TEMPORARILY DISABLED - Step tracking not working properly
+  // const refreshActiveMinutesFromBackend = async (token?: string) => {
+  //   try {
+  //     const { getAuthToken } = await import('@/lib/auth/auth-token')
+  //     const { apiClient } = await import('@/lib/api/client')
+  //     const authToken = token || (await getAuthToken())
+  //     if (!authToken) return
 
-      const today = getLocalDateKey()
-      const stepsRes = await apiClient.get(
-        `/api/metrics/steps?startDate=${today}&endDate=${today}`,
-        authToken,
-      )
-      if (!stepsRes.success || !Array.isArray(stepsRes.data)) return
+  //     const today = getLocalDateKey()
+  //     const stepsRes = await apiClient.get(
+  //       `/api/metrics/steps?startDate=${today}&endDate=${today}`,
+  //       authToken,
+  //     )
+  //     if (!stepsRes.success || !Array.isArray(stepsRes.data)) return
 
-      const todayLog = stepsRes.data[0]
-      const minutes = Number(
-        todayLog?.active_minutes ||
-          Number(todayLog?.slow_minutes || 0) +
-            Number(todayLog?.brisk_minutes || 0),
-      )
-      setActiveMinutes(Math.max(0, minutes || 0))
-    } catch (error) {
-      console.error('[Dashboard] Failed to refresh active minutes:', error)
-    }
-  }
+  //     const todayLog = stepsRes.data[0]
+  //     const minutes = Number(
+  //       todayLog?.active_minutes ||
+  //         Number(todayLog?.slow_minutes || 0) +
+  //           Number(todayLog?.brisk_minutes || 0),
+  //     )
+  //     setActiveMinutes(Math.max(0, minutes || 0))
+  //   } catch (error) {
+  //     console.error('[Dashboard] Failed to refresh active minutes:', error)
+  //   }
+  // }
 
   const refreshWaterIntakeFromBackend = async (token?: string) => {
     try {
@@ -220,15 +221,16 @@ export default function DashboardPage() {
         }
 
         // Load primary dashboard data in parallel to reduce time-to-interactive.
-        const [mealsRes, goalsRes, waterRes, stepsRes, workoutsRes] =
+        // TEMPORARILY DISABLED step API call - not working properly
+        const [mealsRes, goalsRes, waterRes, /* stepsRes, */ workoutsRes] =
           await Promise.all([
             apiClient.get(`/api/nutrition/meals?date=${today}`, token),
             apiClient.get('/api/metrics/goals/current', token),
             apiClient.get(`/api/metrics/water?date=${today}`, token),
-            apiClient.get(
-              `/api/metrics/steps?startDate=${today}&endDate=${today}`,
-              token,
-            ),
+            // apiClient.get(
+            //   `/api/metrics/steps?startDate=${today}&endDate=${today}`,
+            //   token,
+            // ),
             apiClient.get('/api/workouts?limit=30&is_template=false', token),
           ])
 
@@ -278,17 +280,18 @@ export default function DashboardPage() {
           setWaterIntake(nextWaterIntake)
         }
 
-        let nextActiveMinutes = 0
-        if (stepsRes.success && Array.isArray(stepsRes.data)) {
-          const todayLog = stepsRes.data[0]
-          const minutes = Number(
-            todayLog?.active_minutes ||
-              Number(todayLog?.slow_minutes || 0) +
-                Number(todayLog?.brisk_minutes || 0),
-          )
-          nextActiveMinutes = Math.max(0, minutes || 0)
-          setActiveMinutes(nextActiveMinutes)
-        }
+        // TEMPORARILY DISABLED - Step tracking not working properly
+        // let nextActiveMinutes = 0
+        // if (stepsRes.success && Array.isArray(stepsRes.data)) {
+        //   const todayLog = stepsRes.data[0]
+        //   const minutes = Number(
+        //     todayLog?.active_minutes ||
+        //       Number(todayLog?.slow_minutes || 0) +
+        //         Number(todayLog?.brisk_minutes || 0),
+        //   )
+        //   nextActiveMinutes = Math.max(0, minutes || 0)
+        //   setActiveMinutes(nextActiveMinutes)
+        // }
 
         // Fetch recent workouts for streak calculation
         let nextStreak = 0
@@ -314,7 +317,7 @@ export default function DashboardPage() {
           stepGoal: nextStepGoal,
           waterGoalMl: nextWaterGoalMl,
           waterIntake: nextWaterIntake,
-          activeMinutes: nextActiveMinutes,
+          activeMinutes: 0, // TEMPORARILY DISABLED - Step tracking not working
           workoutActiveMinutes: nextWorkoutActiveMinutes,
           streak: nextStreak,
           weeklyVolume: nextWeeklyVolume,
@@ -516,99 +519,88 @@ export default function DashboardPage() {
   }
 
   useEffect(() => {
+    // TEMPORARILY DISABLED - Step tracking not working properly
     // Load steps data (tracking is already started by StepTrackerInitializer)
-    const loadStepsData = async () => {
-      console.log('[Dashboard] Loading steps data...')
-
-      // Load steps from backend first (historical source of truth)
-      const savedSteps = await stepTracker.getTodayStepsFromBackend()
-      console.log('[Dashboard] Backend steps:', savedSteps)
-      setDailySteps(savedSteps)
-      await refreshActiveMinutesFromBackend()
-
-      // Get current steps from device (sensor is already running)
-      if (stepTracker.isSupported()) {
-        try {
-          const deviceSteps = await stepTracker.getTodaySteps()
-          const stats = await stepTracker.getTodayActivityStats()
-          console.log('[Dashboard] Device steps:', deviceSteps, 'Backend steps:', savedSteps)
-
-          // Use the higher value between backend and device
-          const finalSteps = Math.max(savedSteps, deviceSteps)
-          console.log('[Dashboard] Using steps:', finalSteps)
-          setDailySteps(finalSteps)
-          setActiveMinutes(Math.max(0, stats.activeMinutes || 0))
-
-          // Only sync if we have new steps from device
-          if (deviceSteps > savedSteps) {
-            await stepTracker.syncSteps(deviceSteps)
-          }
-        } catch (error) {
-          console.error('[Dashboard] Error loading device steps:', error)
-        }
-      }
-    }
-
-    loadStepsData()
-
+    // const loadStepsData = async () => {
+    //   console.log('[Dashboard] Loading steps data...')
+    //   // Load steps from backend first (historical source of truth)
+    //   const savedSteps = await stepTracker.getTodayStepsFromBackend()
+    //   console.log('[Dashboard] Backend steps:', savedSteps)
+    //   setDailySteps(savedSteps)
+    //   await refreshActiveMinutesFromBackend()
+    //   // Get current steps from device (sensor is already running)
+    //   if (stepTracker.isSupported()) {
+    //     try {
+    //       const deviceSteps = await stepTracker.getTodaySteps()
+    //       const stats = await stepTracker.getTodayActivityStats()
+    //       console.log('[Dashboard] Device steps:', deviceSteps, 'Backend steps:', savedSteps)
+    //       // Use the higher value between backend and device
+    //       const finalSteps = Math.max(savedSteps, deviceSteps)
+    //       console.log('[Dashboard] Using steps:', finalSteps)
+    //       setDailySteps(finalSteps)
+    //       setActiveMinutes(Math.max(0, stats.activeMinutes || 0))
+    //       // Only sync if we have new steps from device
+    //       if (deviceSteps > savedSteps) {
+    //         await stepTracker.syncSteps(deviceSteps)
+    //       }
+    //     } catch (error) {
+    //       console.error('[Dashboard] Error loading device steps:', error)
+    //     }
+    //   }
+    // }
+    // loadStepsData()
     // Set up polling to refresh steps every 30 seconds
-    const pollInterval = setInterval(async () => {
-      try {
-        const steps = await stepTracker.getTodaySteps()
-        setDailySteps((current) => Math.max(current, steps))
-
-        const stats = await stepTracker.getTodayActivityStats()
-        setActiveMinutes(Math.max(0, stats.activeMinutes || 0))
-      } catch (error) {
-        console.error('[Dashboard] Error polling steps:', error)
-      }
-    }, 30000) // Poll every 30 seconds
-
-    return () => {
-      clearInterval(pollInterval)
-    }
+    // const pollInterval = setInterval(async () => {
+    //   try {
+    //     const steps = await stepTracker.getTodaySteps()
+    //     setDailySteps((current) => Math.max(current, steps))
+    //     const stats = await stepTracker.getTodayActivityStats()
+    //     setActiveMinutes(Math.max(0, stats.activeMinutes || 0))
+    //   } catch (error) {
+    //     console.error('[Dashboard] Error polling steps:', error)
+    //   }
+    // }, 30000) // Poll every 30 seconds
+    // return () => {
+    //   clearInterval(pollInterval)
+    // }
   }, [])
 
   useEffect(() => {
-    let appListener: { remove: () => Promise<void> } | null = null
-
-    const setupAppResumeSync = async () => {
-      if (!stepTracker.isSupported()) return
-
-      try {
-        const { App } = await import('@capacitor/app')
-        appListener = await App.addListener(
-          'appStateChange',
-          async ({ isActive }) => {
-            if (!isActive) return
-
-            try {
-              await stepTracker.syncOfflineAndHistoricalSteps()
-              const steps = await stepTracker.getTodaySteps()
-              const stats = await stepTracker.getTodayActivityStats()
-              setDailySteps(steps)
-              setActiveMinutes(Math.max(0, stats.activeMinutes || 0))
-              await stepTracker.syncSteps(steps)
-            } catch (error) {
-              console.error(
-                '[Dashboard] Error refreshing steps on resume:',
-                error,
-              )
-            }
-          },
-        )
-      } catch (error) {
-        console.error('[Dashboard] Failed to set app resume listener:', error)
-      }
-    }
-
-    setupAppResumeSync()
-
-    return () => {
-      if (appListener) {
-        appListener.remove()
-      }
-    }
+    // TEMPORARILY DISABLED - Step tracking not working properly
+    // let appListener: { remove: () => Promise<void> } | null = null
+    // const setupAppResumeSync = async () => {
+    //   if (!stepTracker.isSupported()) return
+    //   try {
+    //     const { App } = await import('@capacitor/app')
+    //     appListener = await App.addListener(
+    //       'appStateChange',
+    //       async ({ isActive }) => {
+    //         if (!isActive) return
+    //         try {
+    //           await stepTracker.syncOfflineAndHistoricalSteps()
+    //           const steps = await stepTracker.getTodaySteps()
+    //           const stats = await stepTracker.getTodayActivityStats()
+    //           setDailySteps(steps)
+    //           setActiveMinutes(Math.max(0, stats.activeMinutes || 0))
+    //           await stepTracker.syncSteps(steps)
+    //         } catch (error) {
+    //           console.error(
+    //             '[Dashboard] Error refreshing steps on resume:',
+    //             error,
+    //           )
+    //         }
+    //       },
+    //     )
+    //   } catch (error) {
+    //     console.error('[Dashboard] Failed to set app resume listener:', error)
+    //   }
+    // }
+    // setupAppResumeSync()
+    // return () => {
+    //   if (appListener) {
+    //     appListener.remove()
+    //   }
+    // }
   }, [])
 
   return (
@@ -746,7 +738,10 @@ export default function DashboardPage() {
                     <div
                       className='h-full bg-gradient-to-r from-blue-500 to-cyan-400 rounded-full transition-all'
                       style={{
-                        width: `${Math.min(100, (waterIntake / waterGoalMl) * 100)}%`,
+                        width: `${Math.min(
+                          100,
+                          (waterIntake / waterGoalMl) * 100,
+                        )}%`,
                       }}
                     />
                   </div>

@@ -91,7 +91,8 @@ export function DayDetailModal({
                 {formatDate(date)}
               </h2>
               <p className='text-[13px] text-gray-400 mt-1'>
-                {todos.length} {todos.length === 1 ? 'todo' : 'todos'} for this day
+                {todos.length} {todos.length === 1 ? 'todo' : 'todos'} for this
+                day
               </p>
             </div>
             <button
@@ -114,7 +115,9 @@ export function DayDetailModal({
                 No todos for this day
               </div>
               <div className='text-[13px] text-gray-400 mb-6'>
-                {isPastDate() ? 'This date is in the past' : 'Add a new todo to get started'}
+                {isPastDate()
+                  ? 'This date is in the past'
+                  : 'Add a new todo to get started'}
               </div>
               {!isPastDate() && (
                 <button

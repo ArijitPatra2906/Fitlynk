@@ -21,7 +21,11 @@ interface CalendarViewProps {
   onDateClick: (date: Date) => void
 }
 
-export function CalendarView({ todos, onTodoClick, onDateClick }: CalendarViewProps) {
+export function CalendarView({
+  todos,
+  onTodoClick,
+  onDateClick,
+}: CalendarViewProps) {
   const [currentDate, setCurrentDate] = useState(new Date())
 
   const getMonthDays = (year: number, month: number) => {
@@ -147,13 +151,16 @@ export function CalendarView({ todos, onTodoClick, onDateClick }: CalendarViewPr
           </button>
 
           <div className='text-[13px] text-gray-400 font-medium'>
-            {todos.filter((t) => {
-              if (!t.due_date) return false
-              const todoDate = new Date(t.due_date)
-              return (
-                todoDate.getMonth() === month && todoDate.getFullYear() === year
-              )
-            }).length}{' '}
+            {
+              todos.filter((t) => {
+                if (!t.due_date) return false
+                const todoDate = new Date(t.due_date)
+                return (
+                  todoDate.getMonth() === month &&
+                  todoDate.getFullYear() === year
+                )
+              }).length
+            }{' '}
             todos this month
           </div>
 
@@ -195,14 +202,13 @@ export function CalendarView({ todos, onTodoClick, onDateClick }: CalendarViewPr
             return (
               <button
                 key={day}
-                onClick={() => !isPastDay && onDateClick(date)}
-                disabled={isPastDay}
+                onClick={() => onDateClick(date)}
                 className={`aspect-square rounded-xl border transition-all relative ${
                   isCurrentDay
                     ? 'bg-blue-500/20 border-blue-500/40 ring-2 ring-blue-500/30'
                     : isPastDay
-                      ? 'bg-[#0B0D17] border-white/5 cursor-not-allowed'
-                      : 'bg-[#131520] border-white/10 hover:border-blue-500/30 cursor-pointer'
+                    ? 'bg-[#0B0D17] border-white/5 cursor-not-allowed'
+                    : 'bg-[#131520] border-white/10 hover:border-blue-500/30 cursor-pointer'
                 }`}
               >
                 <div className='h-full flex flex-col items-center justify-start p-1.5 gap-1'>
@@ -211,8 +217,8 @@ export function CalendarView({ todos, onTodoClick, onDateClick }: CalendarViewPr
                       isCurrentDay
                         ? 'text-blue-400'
                         : isPastDay
-                          ? 'text-gray-600'
-                          : 'text-white'
+                        ? 'text-gray-600'
+                        : 'text-white'
                     }`}
                   >
                     {day}

@@ -4,6 +4,7 @@ import { usePathname } from 'next/navigation'
 import { AppBar } from './app-bar'
 import { BottomNav } from './bottom-nav'
 import { GlobalQuickLogFab } from './global-quick-log-fab'
+import { AuthGuard } from '../auth/auth-guard'
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -70,15 +71,21 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   // Pages without layout (auth pages, splash) - render children directly
   if (!needsLayout) {
-    return <>{children}</>
+    return (
+      <AuthGuard>
+        {children}
+      </AuthGuard>
+    )
   }
 
   return (
-    <div className='flex flex-col h-screen app-shell-bg overflow-hidden'>
-      <AppBar />
-      <div className='flex-1 overflow-y-auto'>{children}</div>
-      {showBottomNav && <BottomNav />}
-      {showGlobalFab && <GlobalQuickLogFab />}
-    </div>
+    <AuthGuard>
+      <div className='flex flex-col h-screen app-shell-bg overflow-hidden'>
+        <AppBar />
+        <div className='flex-1 overflow-y-auto'>{children}</div>
+        {showBottomNav && <BottomNav />}
+        {showGlobalFab && <GlobalQuickLogFab />}
+      </div>
+    </AuthGuard>
   )
 }

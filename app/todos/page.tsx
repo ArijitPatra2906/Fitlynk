@@ -280,15 +280,15 @@ function TodosPageContent() {
         <div className='flex items-center justify-between'>
           <button
             onClick={handleAddNew}
-            className='px-3 py-1.5 rounded-lg bg-gradient-to-br from-blue-600 to-blue-700 text-white text-[13px] font-semibold flex items-center gap-1.5 shadow-lg shadow-blue-500/25 active:scale-95 transition-transform'
+            className='flex items-center gap-2 px-3 py-2 rounded-xl bg-gradient-to-br from-blue-600 to-blue-700 text-white text-[12px] font-semibold shadow-lg shadow-blue-500/25 active:scale-95 transition-transform'
           >
-            <Icon name='plus' size={14} color='white' strokeWidth={2.5} />
-            Add
+            <Icon name='plus' size={16} color='white' strokeWidth={2.5} />
+            New
           </button>
           <div className='flex gap-1 bg-[#1a1f35] border border-white/10 rounded-lg p-0.5'>
             <button
               onClick={() => setViewMode('list')}
-              className={`px-2.5 py-1.5 rounded-md text-[11px] font-semibold transition-all ${
+              className={`px-3 py-1 rounded-md text-[12px] font-semibold transition-all ${
                 viewMode === 'list'
                   ? 'bg-blue-500/20 text-blue-400'
                   : 'text-gray-400'
@@ -304,7 +304,7 @@ function TodosPageContent() {
             </button>
             <button
               onClick={() => setViewMode('calendar')}
-              className={`px-2.5 py-1.5 rounded-md text-[11px] font-semibold transition-all ${
+              className={`px-3 py-2 rounded-md text-[12px] font-semibold transition-all ${
                 viewMode === 'calendar'
                   ? 'bg-blue-500/20 text-blue-400'
                   : 'text-gray-400'
@@ -342,7 +342,7 @@ function TodosPageContent() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder='Search todos...'
-                  className='w-full bg-[#1a1f35] border border-white/10 rounded-lg pl-8 pr-3 py-1.5 text-[12px] text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 transition-colors'
+                  className='w-full bg-[#1a1f35] border border-white/10 rounded-lg pl-8 pr-3 py-2 text-[12px] text-white placeholder-gray-500 focus:outline-none focus:border-blue-500/50 transition-colors'
                 />
                 <div className='absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none'>
                   <Icon name='search' size={14} color='#9CA3AF' />
@@ -357,7 +357,7 @@ function TodosPageContent() {
                     onChange={(e) =>
                       setDateRange(e.target.value as DateRangeFilter)
                     }
-                    className='appearance-none bg-[#1a1f35] border border-white/10 rounded-lg px-2.5 py-1.5 pr-7 text-[11px] font-semibold text-white focus:outline-none focus:border-blue-500/50 transition-colors cursor-pointer'
+                    className='appearance-none bg-[#1a1f35] border border-white/10 rounded-lg px-3 py-2 pr-7 text-[12px] font-semibold text-white focus:outline-none focus:border-blue-500/50 transition-colors cursor-pointer'
                   >
                     <option value='all'>All Time</option>
                     <option value='today'>Today</option>
@@ -402,7 +402,7 @@ function TodosPageContent() {
                 {/* Active Todos */}
                 {statusFilter !== 'completed' && activeTodos.length > 0 && (
                   <div className='mb-4'>
-                    <div className='text-[11px] font-bold text-gray-400 mb-2 flex items-center gap-1.5 uppercase tracking-wide'>
+                    <div className='text-[12px] font-bold text-gray-400 mb-2 flex items-center gap-1.5 uppercase tracking-wide'>
                       <div className='w-1 h-1 rounded-full bg-blue-500' />
                       Active ({activeTodos.length})
                     </div>
@@ -423,7 +423,7 @@ function TodosPageContent() {
                 {/* Completed Todos */}
                 {statusFilter !== 'active' && completedTodos.length > 0 && (
                   <div>
-                    <div className='text-[11px] font-bold text-gray-400 mb-2 flex items-center gap-1.5 uppercase tracking-wide'>
+                    <div className='text-[12px] font-bold text-gray-400 mb-2 flex items-center gap-1.5 uppercase tracking-wide'>
                       <div className='w-1 h-1 rounded-full bg-green-500' />
                       Completed ({completedTodos.length})
                     </div>

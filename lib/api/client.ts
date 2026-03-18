@@ -61,6 +61,20 @@ export async function apiRequest<T = any>(
     console.log('[API] Response data:', data);
 
     if (!response.ok) {
+      // Handle 401 Unauthorized - token is invalid or expired
+      if (response.status === 401) {
+        console.log('[API] Token invalid/expired, redirecting to login...');
+
+        // Remove invalid token
+        const { removeAuthToken } = await import('@/lib/auth/auth-token');
+        await removeAuthToken();
+
+        // Redirect to login page
+        if (typeof window !== 'undefined') {
+          window.location.href = '/login';
+        }
+      }
+
       return {
         success: false,
         error: data.error || `HTTP error! status: ${response.status}`,
