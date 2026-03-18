@@ -385,10 +385,10 @@ function TodosPageContent() {
                   <div className='w-12 h-12 rounded-xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mb-3'>
                     <Icon name='checkSquare' size={22} color='#60A5FA' />
                   </div>
-                  <div className='text-[14px] font-bold text-white mb-1'>
+                  <div className='text-[16px] font-bold text-white mb-1'>
                     No todos found
                   </div>
-                  <div className='text-[12px] text-gray-400'>
+                  <div className='text-[13px] text-gray-400'>
                     {statusFilter === 'all'
                       ? 'Tap Add to create your first todo'
                       : statusFilter === 'active'
