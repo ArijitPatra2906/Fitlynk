@@ -420,6 +420,18 @@ const iconPaths: Record<string, React.ReactNode> = {
       <polyline points='6 9 12 15 18 9' />
     </>
   ),
+  link: (
+    <>
+      <path d='M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71' />
+      <path d='M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71' />
+    </>
+  ),
+  'book-open': (
+    <>
+      <path d='M2 3h6a4 4 0 014 4v14a3 3 0 00-3-3H2z' />
+      <path d='M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z' />
+    </>
+  ),
 }
 
 const lucideIcons: Record<string, LucideIcon> = {

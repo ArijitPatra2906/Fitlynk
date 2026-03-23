@@ -360,7 +360,6 @@ export default function ProfilePage() {
     }
   }
 
-
   const handleLogout = async () => {
     const { removeAuthToken } = await import('@/lib/auth/auth-token')
     await removeAuthToken()
@@ -885,6 +884,19 @@ export default function ProfilePage() {
               </Link>
             )}
 
+            <Link
+              href='/tutorial'
+              className='flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 transition-colors border-b border-white/5'
+            >
+              <div className='w-[34px] h-[34px] rounded-xl flex items-center justify-center bg-purple-500/10'>
+                <Icon name='book-open' size={16} color='#8B5CF6' />
+              </div>
+              <span className='flex-1 text-[14px] font-medium text-white'>
+                Tutorial & Guide
+              </span>
+              <Icon name='chevronRight' size={16} color='#374151' />
+            </Link>
+
             <button
               type='button'
               onClick={() => setIsDeleteAccountOpen(true)}
@@ -921,7 +933,7 @@ export default function ProfilePage() {
             <div className='flex items-center justify-between mb-3'>
               <div className='flex items-center gap-3'>
                 <div className='w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center shadow-lg'>
-                  <Icon name='zap' size={18} color='#ffffff' />
+                  <Icon name='dumbbell' size={18} color='#ffffff' />
                 </div>
                 <div>
                   <div className='text-[15px] font-bold text-[color:var(--app-text)]'>
@@ -936,15 +948,15 @@ export default function ProfilePage() {
                 <div className='text-[10px] text-[color:var(--app-text-muted)] uppercase tracking-wider mb-0.5'>
                   Version
                 </div>
-                <div className='text-[13px] font-bold text-blue-400'>
-                  0.1.0
-                </div>
+                <div className='text-[13px] font-bold text-blue-400'>0.1.0</div>
               </div>
             </div>
 
             <div className='flex items-center justify-between pt-3 border-t border-[color:var(--app-border)]'>
               <div className='text-[11px] text-[color:var(--app-text-muted)]'>
-                Build {new Date().getFullYear()}.{String(new Date().getMonth() + 1).padStart(2, '0')}.{String(new Date().getDate()).padStart(2, '0')}
+                Build {new Date().getFullYear()}.
+                {String(new Date().getMonth() + 1).padStart(2, '0')}.
+                {String(new Date().getDate()).padStart(2, '0')}
               </div>
               <div className='text-[11px] text-[color:var(--app-text-muted)]'>
                 © {new Date().getFullYear()} Fitlynk
@@ -1279,7 +1291,6 @@ export default function ProfilePage() {
         </div>
       )}
 
-
       {/* Delete Account Modal */}
       {isDeleteAccountOpen && (
         <div className='fixed inset-0 z-50 bg-black/65 flex items-center justify-center p-4'>
@@ -1288,15 +1299,19 @@ export default function ProfilePage() {
               <div className='w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center mb-4'>
                 <Icon name='alert-triangle' size={28} color='#EF4444' />
               </div>
-              <h2 className='text-[20px] font-bold text-white mb-2'>Delete Account</h2>
+              <h2 className='text-[20px] font-bold text-white mb-2'>
+                Delete Account
+              </h2>
               <p className='text-[13px] text-gray-400'>
-                This action cannot be undone. All your data will be permanently deleted.
+                This action cannot be undone. All your data will be permanently
+                deleted.
               </p>
             </div>
 
             <div className='mb-6'>
               <label className='text-[12px] text-gray-400 mb-2 block'>
-                Type <span className='text-red-400 font-bold'>DELETE</span> to confirm
+                Type <span className='text-red-400 font-bold'>DELETE</span> to
+                confirm
               </label>
               <input
                 type='text'
