@@ -5,7 +5,8 @@ import { Toaster as Sonner } from "sonner";
 export function Toaster() {
   return (
     <Sonner
-      position="top-center"
+      position="bottom-center"
+      offset={80}
       toastOptions={{
         style: {
           background: '#131520',
@@ -14,6 +15,7 @@ export function Toaster() {
         },
         className: 'toaster-custom',
       }}
+      className="toaster-group"
     />
   );
 }

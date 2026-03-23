@@ -1299,10 +1299,10 @@ export default function ProgressPage() {
                 <ProgressPhotosGridSkeleton />
               ) : (
                 <>
-                  {/* Upload Button */}
-                  <div className='mb-4'>
+                  {/* Upload Buttons */}
+                  <div className='mb-4 grid grid-cols-2 gap-2'>
                     <label
-                      htmlFor='photo-upload'
+                      htmlFor='photo-camera'
                       className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[13px] font-semibold transition-colors ${
                         uploadingPhoto
                           ? 'opacity-50 cursor-not-allowed'
@@ -1312,17 +1312,35 @@ export default function ProgressPage() {
                       {uploadingPhoto ? (
                         <>
                           <div className='w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin' />
-                          Uploading...
                         </>
                       ) : (
                         <>
                           <Icon name='camera' size={16} color='currentColor' />
-                          Add Progress Photo
+                          Take Photo
+                        </>
+                      )}
+                    </label>
+                    <label
+                      htmlFor='photo-gallery'
+                      className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[13px] font-semibold transition-colors ${
+                        uploadingPhoto
+                          ? 'opacity-50 cursor-not-allowed'
+                          : 'hover:bg-blue-500/30 cursor-pointer active:scale-95'
+                      }`}
+                    >
+                      {uploadingPhoto ? (
+                        <>
+                          <div className='w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin' />
+                        </>
+                      ) : (
+                        <>
+                          <Icon name='image' size={16} color='currentColor' />
+                          From Gallery
                         </>
                       )}
                     </label>
                     <input
-                      id='photo-upload'
+                      id='photo-camera'
                       type='file'
                       accept='image/*'
                       capture='environment'
@@ -1332,69 +1350,198 @@ export default function ProgressPage() {
                         const file = e.target.files?.[0]
                         if (!file) return
 
-                        // Check file size (max 10MB)
-                        if (file.size > 10 * 1024 * 1024) {
-                          toast.error('Image too large. Max size is 10MB')
+                        // Check file size (max 50MB before compression)
+                        if (file.size > 50 * 1024 * 1024) {
+                          toast.error('Image too large. Max size is 50MB')
                           e.target.value = ''
                           return
                         }
 
                         setUploadingPhoto(true)
                         try {
-                          const reader = new FileReader()
-                          reader.onloadend = async () => {
-                            try {
-                              const imageData = reader.result as string
+                          // Compress image before uploading
+                          const compressedImage = await new Promise<string>(
+                            (resolve, reject) => {
+                              const reader = new FileReader()
+                              reader.onload = (event) => {
+                                const img = new Image()
+                                img.onload = () => {
+                                  const canvas = document.createElement('canvas')
+                                  let width = img.width
+                                  let height = img.height
 
-                              const { getAuthToken } = await import(
-                                '@/lib/auth/auth-token'
-                              )
-                              const { apiClient } = await import(
-                                '@/lib/api/client'
-                              )
-                              const token = await getAuthToken()
-                              if (!token) {
-                                setUploadingPhoto(false)
-                                return
+                                  // Resize if image is too large (max 1920px on longest side)
+                                  const maxDimension = 1920
+                                  if (width > maxDimension || height > maxDimension) {
+                                    if (width > height) {
+                                      height = (height / width) * maxDimension
+                                      width = maxDimension
+                                    } else {
+                                      width = (width / height) * maxDimension
+                                      height = maxDimension
+                                    }
+                                  }
+
+                                  canvas.width = width
+                                  canvas.height = height
+
+                                  const ctx = canvas.getContext('2d')
+                                  ctx?.drawImage(img, 0, 0, width, height)
+
+                                  // Compress to JPEG with 0.85 quality
+                                  const compressedDataUrl = canvas.toDataURL(
+                                    'image/jpeg',
+                                    0.85,
+                                  )
+                                  resolve(compressedDataUrl)
+                                }
+                                img.onerror = reject
+                                img.src = event.target?.result as string
                               }
+                              reader.onerror = reject
+                              reader.readAsDataURL(file)
+                            },
+                          )
 
-                              const latestWeight =
-                                bodyMetrics[bodyMetrics.length - 1]?.weight_kg
-
-                              const response = await apiClient.post(
-                                '/api/metrics/progress-photos',
-                                {
-                                  imageData,
-                                  taken_at: new Date().toISOString(),
-                                  weight_kg: latestWeight || undefined,
-                                },
-                                token,
-                              )
-
-                              if (response.success) {
-                                toast.success('Progress photo uploaded!')
-                                setProgressPhotos([
-                                  response.data,
-                                  ...progressPhotos,
-                                ])
-                              } else {
-                                toast.error(
-                                  response.error || 'Failed to upload photo',
-                                )
-                              }
-                            } catch (error) {
-                              console.error('Error uploading photo:', error)
-                              toast.error('Failed to upload photo')
-                            } finally {
-                              setUploadingPhoto(false)
-                            }
+                          const { getAuthToken } = await import(
+                            '@/lib/auth/auth-token'
+                          )
+                          const { apiClient } = await import('@/lib/api/client')
+                          const token = await getAuthToken()
+                          if (!token) {
+                            setUploadingPhoto(false)
+                            return
                           }
-                          reader.readAsDataURL(file)
+
+                          const latestWeight =
+                            bodyMetrics[bodyMetrics.length - 1]?.weight_kg
+
+                          const response = await apiClient.post(
+                            '/api/metrics/progress-photos',
+                            {
+                              imageData: compressedImage,
+                              taken_at: new Date().toISOString(),
+                              weight_kg: latestWeight || undefined,
+                            },
+                            token,
+                          )
+
+                          if (response.success) {
+                            toast.success('Progress photo uploaded!')
+                            setProgressPhotos([response.data, ...progressPhotos])
+                          } else {
+                            toast.error(
+                              response.error || 'Failed to upload photo',
+                            )
+                          }
                         } catch (error) {
-                          console.error('Error reading file:', error)
-                          toast.error('Failed to read image file')
-                          setUploadingPhoto(false)
+                          console.error('Error uploading photo:', error)
+                          toast.error('Failed to upload photo')
                         } finally {
+                          setUploadingPhoto(false)
+                          e.target.value = ''
+                        }
+                      }}
+                    />
+                    <input
+                      id='photo-gallery'
+                      type='file'
+                      accept='image/*'
+                      className='hidden'
+                      disabled={uploadingPhoto}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+
+                        // Check file size (max 50MB before compression)
+                        if (file.size > 50 * 1024 * 1024) {
+                          toast.error('Image too large. Max size is 50MB')
+                          e.target.value = ''
+                          return
+                        }
+
+                        setUploadingPhoto(true)
+                        try {
+                          // Compress image before uploading
+                          const compressedImage = await new Promise<string>(
+                            (resolve, reject) => {
+                              const reader = new FileReader()
+                              reader.onload = (event) => {
+                                const img = new Image()
+                                img.onload = () => {
+                                  const canvas = document.createElement('canvas')
+                                  let width = img.width
+                                  let height = img.height
+
+                                  // Resize if image is too large (max 1920px on longest side)
+                                  const maxDimension = 1920
+                                  if (width > maxDimension || height > maxDimension) {
+                                    if (width > height) {
+                                      height = (height / width) * maxDimension
+                                      width = maxDimension
+                                    } else {
+                                      width = (width / height) * maxDimension
+                                      height = maxDimension
+                                    }
+                                  }
+
+                                  canvas.width = width
+                                  canvas.height = height
+
+                                  const ctx = canvas.getContext('2d')
+                                  ctx?.drawImage(img, 0, 0, width, height)
+
+                                  // Compress to JPEG with 0.85 quality
+                                  const compressedDataUrl = canvas.toDataURL(
+                                    'image/jpeg',
+                                    0.85,
+                                  )
+                                  resolve(compressedDataUrl)
+                                }
+                                img.onerror = reject
+                                img.src = event.target?.result as string
+                              }
+                              reader.onerror = reject
+                              reader.readAsDataURL(file)
+                            },
+                          )
+
+                          const { getAuthToken } = await import(
+                            '@/lib/auth/auth-token'
+                          )
+                          const { apiClient } = await import('@/lib/api/client')
+                          const token = await getAuthToken()
+                          if (!token) {
+                            setUploadingPhoto(false)
+                            return
+                          }
+
+                          const latestWeight =
+                            bodyMetrics[bodyMetrics.length - 1]?.weight_kg
+
+                          const response = await apiClient.post(
+                            '/api/metrics/progress-photos',
+                            {
+                              imageData: compressedImage,
+                              taken_at: new Date().toISOString(),
+                              weight_kg: latestWeight || undefined,
+                            },
+                            token,
+                          )
+
+                          if (response.success) {
+                            toast.success('Progress photo uploaded!')
+                            setProgressPhotos([response.data, ...progressPhotos])
+                          } else {
+                            toast.error(
+                              response.error || 'Failed to upload photo',
+                            )
+                          }
+                        } catch (error) {
+                          console.error('Error uploading photo:', error)
+                          toast.error('Failed to upload photo')
+                        } finally {
+                          setUploadingPhoto(false)
                           e.target.value = ''
                         }
                       }}
@@ -1490,11 +1637,11 @@ export default function ProgressPage() {
                   {/* Photo Detail Modal */}
                   {photoModalOpen && selectedPhoto && (
                     <div
-                      className='fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm'
+                      className='fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm overflow-y-auto p-4'
                       onClick={() => setPhotoModalOpen(false)}
                     >
                       <div
-                        className='relative w-full max-w-lg mx-4'
+                        className='relative w-full max-w-lg my-auto'
                         onClick={(e) => e.stopPropagation()}
                       >
                         <button

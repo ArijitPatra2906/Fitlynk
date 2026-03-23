@@ -23,9 +23,10 @@ interface TodoModalProps {
   onSave: (todo: Partial<Todo>) => void
   todo?: Todo | null
   prefilledDueDate?: string | null
+  saving?: boolean
 }
 
-export function TodoModal({ isOpen, onClose, onSave, todo, prefilledDueDate }: TodoModalProps) {
+export function TodoModal({ isOpen, onClose, onSave, todo, prefilledDueDate, saving = false }: TodoModalProps) {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium')
@@ -304,10 +305,13 @@ export function TodoModal({ isOpen, onClose, onSave, todo, prefilledDueDate }: T
             </button>
             <button
               onClick={handleSave}
-              disabled={!title.trim()}
-              className='flex-1 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl py-4 text-[15px] font-semibold text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed'
+              disabled={!title.trim() || saving}
+              className='flex-1 bg-gradient-to-br from-blue-600 to-blue-700 rounded-2xl py-4 text-[15px] font-semibold text-white shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2'
             >
-              {todo ? 'Update' : 'Create'}
+              {saving && (
+                <div className='w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin' />
+              )}
+              {saving ? 'Saving...' : (todo ? 'Update' : 'Create')}
             </button>
           </div>
         </div>

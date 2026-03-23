@@ -408,6 +408,13 @@ const iconPaths: Record<string, React.ReactNode> = {
       <path d='M22 3h-6a4 4 0 00-4 4v14a3 3 0 013-3h7z' />
     </>
   ),
+  image: (
+    <>
+      <rect x='3' y='3' width='18' height='18' rx='2' ry='2' />
+      <circle cx='8.5' cy='8.5' r='1.5' />
+      <polyline points='21 15 16 10 5 21' />
+    </>
+  ),
 }
 
 const lucideIcons: Record<string, LucideIcon> = {

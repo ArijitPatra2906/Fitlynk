@@ -9,6 +9,7 @@ import { CalendarView } from '@/components/todos/calendar-view'
 import { DayDetailModal } from '@/components/todos/day-detail-modal'
 import { TodosPageSkeleton } from '@/components/ui/skeleton'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { toast } from 'sonner'
 
 interface Todo {
   _id: string
@@ -51,6 +52,8 @@ function TodosPageContent() {
   const [prefilledDueDate, setPrefilledDueDate] = useState<string | null>(null)
   const [isConfirmDeleteOpen, setIsConfirmDeleteOpen] = useState(false)
   const [todoToDelete, setTodoToDelete] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const fetchTodos = useCallback(async () => {
     setLoading(true)
@@ -158,22 +161,32 @@ function TodosPageContent() {
   const confirmDelete = async () => {
     if (!todoToDelete) return
 
+    setDeleting(true)
     try {
       const { getAuthToken } = await import('@/lib/auth/auth-token')
       const { apiClient } = await import('@/lib/api/client')
       const token = await getAuthToken()
 
-      if (!token) return
+      if (!token) {
+        toast.error('Authentication required')
+        return
+      }
 
       const response = await apiClient.delete(`/api/todos/${todoToDelete}`, token)
 
       if (response.success) {
         setTodos((prev) => prev.filter((todo) => todo._id !== todoToDelete))
+        toast.success('Todo deleted successfully')
+      } else {
+        toast.error('Failed to delete todo')
       }
     } catch (error) {
       console.error('Error deleting todo:', error)
+      toast.error('Failed to delete todo')
     } finally {
+      setDeleting(false)
       setTodoToDelete(null)
+      setIsConfirmDeleteOpen(false)
     }
   }
 
@@ -183,13 +196,17 @@ function TodosPageContent() {
   }
 
   const handleSave = async (todoData: Partial<Todo>) => {
+    setSaving(true)
     try {
       console.log('Saving todo with data:', todoData)
       const { getAuthToken } = await import('@/lib/auth/auth-token')
       const { apiClient } = await import('@/lib/api/client')
       const token = await getAuthToken()
 
-      if (!token) return
+      if (!token) {
+        toast.error('Authentication required')
+        return
+      }
 
       let response
       if (editingTodo) {
@@ -210,9 +227,16 @@ function TodosPageContent() {
         await fetchTodos()
         setIsModalOpen(false)
         setEditingTodo(null)
+        setPrefilledDueDate(null)
+        toast.success(editingTodo ? 'Todo updated successfully' : 'Todo created successfully')
+      } else {
+        toast.error(editingTodo ? 'Failed to update todo' : 'Failed to create todo')
       }
     } catch (error) {
       console.error('Error saving todo:', error)
+      toast.error(editingTodo ? 'Failed to update todo' : 'Failed to create todo')
+    } finally {
+      setSaving(false)
     }
   }
 
@@ -481,6 +505,7 @@ function TodosPageContent() {
         onSave={handleSave}
         todo={editingTodo}
         prefilledDueDate={prefilledDueDate}
+        saving={saving}
       />
 
       {/* Delete Confirmation Modal */}
@@ -496,6 +521,7 @@ function TodosPageContent() {
         confirmText="Delete"
         cancelText="Cancel"
         type="danger"
+        loading={deleting}
       />
     </div>
   )

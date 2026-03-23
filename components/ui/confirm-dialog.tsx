@@ -11,6 +11,7 @@ interface ConfirmDialogProps {
   confirmText?: string;
   cancelText?: string;
   type?: "danger" | "warning" | "info";
+  loading?: boolean;
 }
 
 export function ConfirmDialog({
@@ -22,6 +23,7 @@ export function ConfirmDialog({
   confirmText = "Delete",
   cancelText = "Cancel",
   type = "danger",
+  loading = false,
 }: ConfirmDialogProps) {
   if (!isOpen) return null;
 
@@ -85,11 +87,14 @@ export function ConfirmDialog({
             <button
               onClick={() => {
                 onConfirm();
-                onClose();
               }}
-              className={`flex-1 py-2.5 rounded-xl ${colors.buttonBg} ${colors.buttonHover} text-white text-sm font-semibold transition-colors`}
+              disabled={loading}
+              className={`flex-1 py-2.5 rounded-xl ${colors.buttonBg} ${colors.buttonHover} text-white text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2`}
             >
-              {confirmText}
+              {loading && (
+                <div className='w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin' />
+              )}
+              {loading ? 'Deleting...' : confirmText}
             </button>
           </div>
         </div>

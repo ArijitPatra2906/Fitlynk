@@ -134,7 +134,7 @@ export default function SupportPage() {
   return (
     <div className='h-full flex flex-col overflow-hidden'>
       {/* Header */}
-      <div className='flex-shrink-0 app-surface border-b border-[color:var(--app-border)] px-6 py-4'>
+      <div className='flex-shrink-0 app-surface border-b border-[color:var(--app-border)] px-6 pt-safe py-4'>
         <div className='flex items-center gap-3'>
           <button
             onClick={() => router.back()}
