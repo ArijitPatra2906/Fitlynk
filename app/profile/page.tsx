@@ -123,6 +123,12 @@ export default function ProfilePage() {
   const [avatarUploading, setAvatarUploading] = useState(false)
   const [isEditOpen, setIsEditOpen] = useState(false)
   const [themeMode, setThemeMode] = useState<ThemeMode>('dark')
+  const [isUnitsDrawerOpen, setIsUnitsDrawerOpen] = useState(false)
+  const [selectedUnits, setSelectedUnits] = useState<'metric' | 'imperial'>(
+    'metric',
+  )
+  const [isDeleteAccountOpen, setIsDeleteAccountOpen] = useState(false)
+  const [deleteConfirmText, setDeleteConfirmText] = useState('')
 
   const [nameInput, setNameInput] = useState('')
   const [heightInput, setHeightInput] = useState('')
@@ -227,7 +233,10 @@ export default function ProfilePage() {
   }
 
   const buildCustomAvatarUrl = () =>
-    `${buildDiceBearUrl(customStyle, customSeed)}&backgroundColor=${customBgColor}&radius=50`
+    `${buildDiceBearUrl(
+      customStyle,
+      customSeed,
+    )}&backgroundColor=${customBgColor}&radius=50`
 
   const applyCustomAvatar = () => {
     const seed = customSeed.trim()
@@ -250,7 +259,10 @@ export default function ProfilePage() {
     setCustomSeed(randomSeed)
     setCustomBgColor(randomBg)
     setSelectedAvatarUrl(
-      `${buildDiceBearUrl(randomStyle, randomSeed)}&backgroundColor=${randomBg}&radius=50`,
+      `${buildDiceBearUrl(
+        randomStyle,
+        randomSeed,
+      )}&backgroundColor=${randomBg}&radius=50`,
     )
   }
 
@@ -311,6 +323,44 @@ export default function ProfilePage() {
     }
   }
 
+  const handleDeleteAccount = async () => {
+    if (deleteConfirmText !== 'DELETE') {
+      toast.error('Please type DELETE to confirm')
+      return
+    }
+
+    try {
+      setSaving(true)
+      const { getAuthToken } = await import('@/lib/auth/auth-token')
+      const { apiClient } = await import('@/lib/api/client')
+      const token = await getAuthToken()
+      if (!token) {
+        toast.error('Session expired. Please login again.')
+        return
+      }
+
+      const res = await apiClient.delete('/api/auth/account', token)
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to delete account')
+      }
+
+      toast.success('Account deleted successfully')
+
+      // Logout after deletion
+      const { removeAuthToken } = await import('@/lib/auth/auth-token')
+      await removeAuthToken()
+      const { stepTracker } = await import('@/lib/services/step-tracker')
+      stepTracker.resetTrackerState()
+
+      window.location.href = '/login'
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to delete account')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+
   const handleLogout = async () => {
     const { removeAuthToken } = await import('@/lib/auth/auth-token')
     await removeAuthToken()
@@ -347,6 +397,105 @@ export default function ProfilePage() {
     if (!weight) return '-'
     if (units === 'imperial') return `${Math.round(weight * 2.20462)} lbs`
     return `${weight} kg`
+  }
+
+  const handleExportData = async () => {
+    try {
+      setSaving(true)
+      toast.info('Preparing your data export...')
+
+      const { getAuthToken } = await import('@/lib/auth/auth-token')
+      const { apiClient } = await import('@/lib/api/client')
+      const token = await getAuthToken()
+      if (!token) {
+        toast.error('Session expired. Please login again.')
+        return
+      }
+
+      // Fetch all user data
+      const [
+        profileRes,
+        goalsRes,
+        bodyMetricsRes,
+        workoutsRes,
+        mealsRes,
+        stepsRes,
+        waterRes,
+        photosRes,
+      ] = await Promise.all([
+        apiClient.get('/api/auth/me', token),
+        apiClient.get('/api/goals', token),
+        apiClient.get('/api/metrics/body', token),
+        apiClient.get('/api/workouts', token),
+        apiClient.get('/api/meals', token),
+        apiClient.get('/api/metrics/steps', token),
+        apiClient.get('/api/metrics/water', token),
+        apiClient.get('/api/metrics/progress-photos', token),
+      ])
+
+      const exportData = {
+        exported_at: new Date().toISOString(),
+        profile: profileRes.data || null,
+        goals: goalsRes.data || null,
+        body_metrics: bodyMetricsRes.data || [],
+        workouts: workoutsRes.data || [],
+        meals: mealsRes.data || [],
+        steps: stepsRes.data || [],
+        water: waterRes.data || [],
+        progress_photos: photosRes.data || [],
+      }
+
+      // Create downloadable JSON file
+      const dataStr = JSON.stringify(exportData, null, 2)
+      const dataBlob = new Blob([dataStr], { type: 'application/json' })
+      const url = URL.createObjectURL(dataBlob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `fitlynk-data-export-${
+        new Date().toISOString().split('T')[0]
+      }.json`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+
+      toast.success('Data exported successfully!')
+    } catch (error: any) {
+      console.error('Export data error:', error)
+      toast.error(error.message || 'Failed to export data')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleSaveUnits = async () => {
+    try {
+      setSaving(true)
+      const { getAuthToken } = await import('@/lib/auth/auth-token')
+      const { apiClient } = await import('@/lib/api/client')
+      const token = await getAuthToken()
+      if (!token) {
+        toast.error('Session expired. Please login again.')
+        return
+      }
+
+      const res = await apiClient.put(
+        '/api/auth/profile',
+        { units: selectedUnits },
+        token,
+      )
+      if (!res.success || !res.data) {
+        throw new Error(res.error || 'Failed to update units')
+      }
+
+      setUserData(res.data as User)
+      setIsUnitsDrawerOpen(false)
+      toast.success('Units preference updated')
+    } catch (error: any) {
+      toast.error(error.message || 'Failed to update units')
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleSaveProfile = async () => {
@@ -473,7 +622,7 @@ export default function ProfilePage() {
                 val: formatHeight(userData?.height, userData?.units),
               },
               {
-                label: 'Baseline Weight',
+                label: 'Weight',
                 val: formatWeight(userData?.weight_kg, userData?.units),
               },
               { label: 'Age', val: calculateAge(userData?.date_of_birth) },
@@ -498,6 +647,18 @@ export default function ProfilePage() {
           </div>
           <div className='bg-[#131520] border border-white/5 rounded-2xl overflow-hidden'>
             <Link
+              href='/progress'
+              className='flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 transition-colors border-b border-white/5'
+            >
+              <div className='w-[34px] h-[34px] rounded-xl flex items-center justify-center bg-emerald-500/10'>
+                <Icon name='trending-up' size={16} color='#10B981' />
+              </div>
+              <span className='flex-1 text-[14px] font-medium text-white'>
+                Progress Tracking
+              </span>
+              <Icon name='chevronRight' size={16} color='#374151' />
+            </Link>
+            <Link
               href='/settings/goals'
               className='flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 transition-colors'
             >
@@ -507,7 +668,6 @@ export default function ProfilePage() {
               <span className='flex-1 text-[14px] font-medium text-white'>
                 Nutrition Goals
               </span>
-              <span className='text-[13px] text-gray-400'>Set targets</span>
               <Icon name='chevronRight' size={16} color='#374151' />
             </Link>
           </div>
@@ -519,18 +679,22 @@ export default function ProfilePage() {
           </div>
           <div className='bg-[#131520] border border-white/5 rounded-2xl overflow-hidden'>
             {/* Units Setting */}
-            <div className='flex items-center gap-3 px-4 py-3.5 border-b border-white/5'>
+            <button
+              type='button'
+              onClick={() => {
+                setSelectedUnits(userData?.units || 'metric')
+                setIsUnitsDrawerOpen(true)
+              }}
+              className='w-full flex items-center gap-3 px-4 py-3.5 border-b border-white/5 hover:bg-white/5 transition-colors'
+            >
               <div className='w-[34px] h-[34px] rounded-xl flex items-center justify-center bg-blue-500/10'>
                 <Icon name='repeat' size={16} color='#3B82F6' />
               </div>
-              <span className='flex-1 text-[14px] font-medium text-white'>
+              <span className='flex-1 text-left text-[14px] font-medium text-white'>
                 Units
               </span>
-              <span className='text-[13px] text-gray-400'>
-                {userData?.units === 'metric' ? 'Metric' : 'Imperial'}
-              </span>
               <Icon name='chevronRight' size={16} color='#374151' />
-            </div>
+            </button>
 
             {/* Notifications Toggle */}
             <button
@@ -541,7 +705,7 @@ export default function ProfilePage() {
                   toast.success(
                     notificationPrefs?.push_notifications_enabled
                       ? 'Push notifications disabled'
-                      : 'Push notifications enabled'
+                      : 'Push notifications enabled',
                   )
                 } else {
                   toast.error('Failed to update notification settings')
@@ -554,9 +718,6 @@ export default function ProfilePage() {
               </div>
               <span className='flex-1 text-[14px] font-medium text-white'>
                 Push Notifications
-              </span>
-              <span className='text-[13px] text-gray-400'>
-                {notificationPrefs?.push_notifications_enabled ? 'On' : 'Off'}
               </span>
               <div
                 className={`w-11 h-6 rounded-full p-1 transition-colors ${
@@ -586,7 +747,6 @@ export default function ProfilePage() {
               <span className='flex-1 text-[14px] font-medium text-white'>
                 Notification Settings
               </span>
-              <span className='text-[13px] text-gray-400'>Customize</span>
               <Icon name='chevronRight' size={16} color='#374151' />
             </Link>
             <button
@@ -601,9 +761,6 @@ export default function ProfilePage() {
                 Dark Mode
               </span>
               {/* <span className='text-[13px] text-gray-400'>On</span> */}
-              <span className='text-[13px] text-gray-400'>
-                {themeMode === 'dark' ? 'On' : 'Off'}
-              </span>
               <div
                 className={`w-11 h-6 rounded-full p-1 transition-colors ${
                   themeMode === 'dark' ? 'bg-blue-600' : 'bg-slate-500'
@@ -625,52 +782,283 @@ export default function ProfilePage() {
             Account
           </div>
           <div className='bg-[#131520] border border-white/5 rounded-2xl overflow-hidden'>
-            {[
-              { label: 'Export Data', val: '', icon: 'edit', action: null },
-              { label: 'Privacy Policy', val: '', icon: 'mail', action: null },
-              {
-                label: 'Log Out',
-                val: '',
-                icon: 'logout',
-                action: handleLogout,
-              },
-            ].map((item, i, arr) => (
-              <button
-                key={item.label}
-                onClick={item.action || undefined}
-                className={`w-full flex items-center gap-3 px-4 py-3.5 text-left ${
-                  i < arr.length - 1 ? 'border-b border-white/5' : ''
-                } ${item.label === 'Log Out' ? 'text-red-500' : ''}`}
+            <button
+              type='button'
+              onClick={handleExportData}
+              disabled={saving}
+              className='w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-white/5 transition-colors disabled:opacity-50 disabled:cursor-not-allowed'
+            >
+              <div className='w-[34px] h-[34px] rounded-xl flex items-center justify-center bg-blue-500/10'>
+                <Icon name='download' size={16} color='#3B82F6' />
+              </div>
+              <span className='flex-1 text-[14px] font-medium text-white'>
+                Export Data
+              </span>
+              <Icon name='chevronRight' size={16} color='#374151' />
+            </button>
+          </div>
+        </div>
+
+        <div className='mb-5'>
+          <div className='text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2'>
+            Legal
+          </div>
+          <div className='bg-[#131520] border border-white/5 rounded-2xl overflow-hidden'>
+            <Link
+              href='/privacy'
+              className='flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 transition-colors border-b border-white/5'
+            >
+              <div className='w-[34px] h-[34px] rounded-xl flex items-center justify-center bg-blue-500/10'>
+                <Icon name='shield' size={16} color='#3B82F6' />
+              </div>
+              <span className='flex-1 text-[14px] font-medium text-white'>
+                Privacy Policy
+              </span>
+              <Icon name='chevronRight' size={16} color='#374151' />
+            </Link>
+
+            <Link
+              href='/terms'
+              className='flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 transition-colors'
+            >
+              <div className='w-[34px] h-[34px] rounded-xl flex items-center justify-center bg-blue-500/10'>
+                <Icon name='file-text' size={16} color='#3B82F6' />
+              </div>
+              <span className='flex-1 text-[14px] font-medium text-white'>
+                Terms & Conditions
+              </span>
+              <Icon name='chevronRight' size={16} color='#374151' />
+            </Link>
+          </div>
+        </div>
+
+        <div className='mb-5'>
+          <div className='text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2'>
+            Support
+          </div>
+          <div className='bg-[#131520] border border-white/5 rounded-2xl overflow-hidden'>
+            <Link
+              href='/help'
+              className='flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 transition-colors border-b border-white/5'
+            >
+              <div className='w-[34px] h-[34px] rounded-xl flex items-center justify-center bg-blue-500/10'>
+                <Icon name='help-circle' size={16} color='#3B82F6' />
+              </div>
+              <span className='flex-1 text-[14px] font-medium text-white'>
+                Help Center
+              </span>
+              <Icon name='chevronRight' size={16} color='#374151' />
+            </Link>
+
+            <Link
+              href='/support'
+              className='flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 transition-colors'
+            >
+              <div className='w-[34px] h-[34px] rounded-xl flex items-center justify-center bg-blue-500/10'>
+                <Icon name='message-circle' size={16} color='#3B82F6' />
+              </div>
+              <span className='flex-1 text-[14px] font-medium text-white'>
+                Contact Support
+              </span>
+              <Icon name='chevronRight' size={16} color='#374151' />
+            </Link>
+          </div>
+        </div>
+
+        <div className='mb-5'>
+          <div className='text-[11px] font-bold text-gray-600 uppercase tracking-wider mb-2'>
+            Account
+          </div>
+          <div className='bg-[#131520] border border-white/5 rounded-2xl overflow-hidden'>
+            {userData?.auth_provider === 'email' && (
+              <Link
+                href='/change-password'
+                className='flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 transition-colors border-b border-white/5'
               >
-                <div
-                  className={`w-[34px] h-[34px] rounded-xl flex items-center justify-center ${
-                    item.label === 'Log Out'
-                      ? 'bg-red-500/10'
-                      : 'bg-blue-500/10'
-                  }`}
-                >
-                  <Icon
-                    name={item.icon}
-                    size={16}
-                    color={item.label === 'Log Out' ? '#EF4444' : '#3B82F6'}
-                  />
+                <div className='w-[34px] h-[34px] rounded-xl flex items-center justify-center bg-blue-500/10'>
+                  <Icon name='lock' size={16} color='#3B82F6' />
                 </div>
-                <span
-                  className={`flex-1 text-[14px] font-medium ${
-                    item.label === 'Log Out' ? 'text-red-500' : 'text-white'
-                  }`}
-                >
-                  {item.label}
+                <span className='flex-1 text-[14px] font-medium text-white'>
+                  Change Password
                 </span>
-                {item.val && (
-                  <span className='text-[13px] text-gray-400'>{item.val}</span>
-                )}
                 <Icon name='chevronRight' size={16} color='#374151' />
-              </button>
-            ))}
+              </Link>
+            )}
+
+            <button
+              type='button'
+              onClick={() => setIsDeleteAccountOpen(true)}
+              className='w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-white/5 transition-colors border-b border-white/5'
+            >
+              <div className='w-[34px] h-[34px] rounded-xl flex items-center justify-center bg-orange-500/10'>
+                <Icon name='alert-triangle' size={16} color='#F97316' />
+              </div>
+              <span className='flex-1 text-[14px] font-medium text-orange-400'>
+                Delete Account
+              </span>
+              <Icon name='chevronRight' size={16} color='#374151' />
+            </button>
+
+            <button
+              type='button'
+              onClick={handleLogout}
+              className='w-full flex items-center gap-3 px-4 py-3.5 text-left hover:bg-white/5 transition-colors text-red-500'
+            >
+              <div className='w-[34px] h-[34px] rounded-xl flex items-center justify-center bg-red-500/10'>
+                <Icon name='logout' size={16} color='#EF4444' />
+              </div>
+              <span className='flex-1 text-[14px] font-medium text-red-500'>
+                Log Out
+              </span>
+              <Icon name='chevronRight' size={16} color='#374151' />
+            </button>
+          </div>
+        </div>
+
+        {/* App Version Info */}
+        <div className='mt-8 pb-4'>
+          <div className='app-surface border rounded-2xl p-4'>
+            <div className='flex items-center justify-between mb-3'>
+              <div className='flex items-center gap-3'>
+                <div className='w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-emerald-500 flex items-center justify-center shadow-lg'>
+                  <Icon name='zap' size={18} color='#ffffff' />
+                </div>
+                <div>
+                  <div className='text-[15px] font-bold text-[color:var(--app-text)]'>
+                    Fitlynk
+                  </div>
+                  <div className='text-[11px] text-[color:var(--app-text-muted)]'>
+                    Fitness Companion
+                  </div>
+                </div>
+              </div>
+              <div className='text-right'>
+                <div className='text-[10px] text-[color:var(--app-text-muted)] uppercase tracking-wider mb-0.5'>
+                  Version
+                </div>
+                <div className='text-[13px] font-bold text-blue-400'>
+                  0.1.0
+                </div>
+              </div>
+            </div>
+
+            <div className='flex items-center justify-between pt-3 border-t border-[color:var(--app-border)]'>
+              <div className='text-[11px] text-[color:var(--app-text-muted)]'>
+                Build {new Date().getFullYear()}.{String(new Date().getMonth() + 1).padStart(2, '0')}.{String(new Date().getDate()).padStart(2, '0')}
+              </div>
+              <div className='text-[11px] text-[color:var(--app-text-muted)]'>
+                © {new Date().getFullYear()} Fitlynk
+              </div>
+            </div>
           </div>
         </div>
       </div>
+
+      {/* Units Drawer */}
+      {isUnitsDrawerOpen && (
+        <div className='fixed inset-0 z-50 flex items-end justify-center'>
+          {/* Backdrop */}
+          <div
+            className='absolute inset-0 bg-black/60 backdrop-blur-sm'
+            onClick={() => {
+              setSelectedUnits(userData?.units || 'metric')
+              setIsUnitsDrawerOpen(false)
+            }}
+          />
+
+          {/* Drawer */}
+          <div className='relative w-full max-w-lg bg-[#131520] rounded-t-3xl border-t border-x border-white/10 shadow-2xl animate-slide-up'>
+            {/* Handle */}
+            <div className='flex justify-center pt-3 pb-2'>
+              <div className='w-10 h-1 bg-white/20 rounded-full' />
+            </div>
+
+            {/* Header */}
+            <div className='px-6 pb-4 border-b border-white/10'>
+              <div className='flex items-start justify-between'>
+                <div>
+                  <h2 className='text-[18px] font-bold text-white'>
+                    Units Preference
+                  </h2>
+                  <p className='text-[12px] text-gray-400 mt-0.5'>
+                    Choose your measurement system
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setSelectedUnits(userData?.units || 'metric')
+                    setIsUnitsDrawerOpen(false)
+                  }}
+                  className='w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors'
+                >
+                  <Icon name='x' size={16} color='#64748B' />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className='p-6 space-y-3'>
+              {/* Metric Option */}
+              <button
+                type='button'
+                onClick={() => setSelectedUnits('metric')}
+                className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${
+                  selectedUnits === 'metric'
+                    ? 'bg-blue-500/10 border-blue-500/30'
+                    : 'bg-[#1a1f35] border-white/10 hover:border-white/20'
+                }`}
+              >
+                <div className='text-left'>
+                  <div className='text-[15px] font-semibold text-white mb-1'>
+                    Metric
+                  </div>
+                  <div className='text-[12px] text-gray-400'>kg, cm, ml</div>
+                </div>
+                {selectedUnits === 'metric' && (
+                  <div className='w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center'>
+                    <Icon name='check' size={14} color='#ffffff' />
+                  </div>
+                )}
+              </button>
+
+              {/* Imperial Option */}
+              <button
+                type='button'
+                onClick={() => setSelectedUnits('imperial')}
+                className={`w-full flex items-center justify-between p-4 rounded-2xl border transition-all ${
+                  selectedUnits === 'imperial'
+                    ? 'bg-blue-500/10 border-blue-500/30'
+                    : 'bg-[#1a1f35] border-white/10 hover:border-white/20'
+                }`}
+              >
+                <div className='text-left'>
+                  <div className='text-[15px] font-semibold text-white mb-1'>
+                    Imperial
+                  </div>
+                  <div className='text-[12px] text-gray-400'>lbs, in, oz</div>
+                </div>
+                {selectedUnits === 'imperial' && (
+                  <div className='w-6 h-6 rounded-full bg-blue-500 flex items-center justify-center'>
+                    <Icon name='check' size={14} color='#ffffff' />
+                  </div>
+                )}
+              </button>
+            </div>
+
+            {/* Save Button */}
+            <div className='px-6 pb-6'>
+              <button
+                type='button'
+                onClick={handleSaveUnits}
+                disabled={saving || selectedUnits === userData?.units}
+                className='w-full py-3 rounded-xl bg-blue-600 text-white text-[14px] font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-blue-700 transition-colors'
+              >
+                {saving ? 'Saving...' : 'Save Changes'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {isEditOpen && (
         <div className='fixed inset-0 z-50 bg-black/65 flex items-end sm:items-center justify-center p-3'>
@@ -832,14 +1220,15 @@ export default function ProfilePage() {
                   value={weightInput}
                   onChange={(e) => setWeightInput(e.target.value)}
                   placeholder={
-                    unitsInput === 'metric' ? 'Baseline Weight (kg)' : 'Baseline Weight (lbs)'
+                    unitsInput === 'metric' ? 'Weight (kg)' : 'Weight (lbs)'
                   }
                   disabled
                   className='bg-[#1a1f35] border border-white/10 rounded-xl px-3 py-2.5 text-gray-400 text-[14px] opacity-70 cursor-not-allowed'
                 />
               </div>
               <div className='text-[11px] text-gray-500 -mt-1'>
-                Baseline weight is set during onboarding. Track current weight from Progress page.
+                Weight is set during onboarding. Track current weight from
+                Progress page.
               </div>
               <input
                 type='date'
@@ -883,9 +1272,61 @@ export default function ProfilePage() {
               {avatarUploading
                 ? 'Uploading avatar...'
                 : saving
-                  ? 'Saving...'
-                  : 'Save Profile'}
+                ? 'Saving...'
+                : 'Save Profile'}
             </button>
+          </div>
+        </div>
+      )}
+
+
+      {/* Delete Account Modal */}
+      {isDeleteAccountOpen && (
+        <div className='fixed inset-0 z-50 bg-black/65 flex items-center justify-center p-4'>
+          <div className='w-full max-w-md bg-[#131520] border border-red-500/30 rounded-2xl p-6'>
+            <div className='flex flex-col items-center text-center mb-6'>
+              <div className='w-16 h-16 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center mb-4'>
+                <Icon name='alert-triangle' size={28} color='#EF4444' />
+              </div>
+              <h2 className='text-[20px] font-bold text-white mb-2'>Delete Account</h2>
+              <p className='text-[13px] text-gray-400'>
+                This action cannot be undone. All your data will be permanently deleted.
+              </p>
+            </div>
+
+            <div className='mb-6'>
+              <label className='text-[12px] text-gray-400 mb-2 block'>
+                Type <span className='text-red-400 font-bold'>DELETE</span> to confirm
+              </label>
+              <input
+                type='text'
+                value={deleteConfirmText}
+                onChange={(e) => setDeleteConfirmText(e.target.value)}
+                placeholder='DELETE'
+                className='w-full bg-[#1a1f35] border border-red-500/30 rounded-xl px-4 py-3 text-white text-[14px] placeholder-gray-600'
+              />
+            </div>
+
+            <div className='flex gap-3'>
+              <button
+                type='button'
+                onClick={() => {
+                  setIsDeleteAccountOpen(false)
+                  setDeleteConfirmText('')
+                }}
+                className='flex-1 py-3 rounded-xl bg-[#1a1f35] border border-white/10 text-gray-300 text-[14px] font-semibold hover:bg-[#252938] transition-colors'
+              >
+                Cancel
+              </button>
+              <button
+                type='button'
+                onClick={handleDeleteAccount}
+                disabled={saving || deleteConfirmText !== 'DELETE'}
+                className='flex-1 py-3 rounded-xl bg-red-500 text-white text-[14px] font-semibold disabled:opacity-50 hover:bg-red-600 transition-colors'
+              >
+                {saving ? 'Deleting...' : 'Delete Account'}
+              </button>
+            </div>
           </div>
         </div>
       )}
