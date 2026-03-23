@@ -64,10 +64,8 @@ export default function ChangePasswordPage() {
     if (/\d/.test(password)) strength++
     if (/[^a-zA-Z0-9]/.test(password)) strength++
 
-    if (strength <= 2)
-      return { strength: 2, label: 'Weak', color: '#F59E0B' }
-    if (strength <= 3)
-      return { strength: 3, label: 'Medium', color: '#3B82F6' }
+    if (strength <= 2) return { strength: 2, label: 'Weak', color: '#F59E0B' }
+    if (strength <= 3) return { strength: 3, label: 'Medium', color: '#3B82F6' }
     return { strength: 4, label: 'Strong', color: '#10B981' }
   }
 
@@ -207,7 +205,7 @@ export default function ChangePasswordPage() {
                 className='absolute right-4 top-1/2 -translate-y-1/2 text-[color:var(--app-text-muted)] hover:text-[color:var(--app-text)] transition-colors'
               >
                 <Icon
-                  name={showCurrentPassword ? 'eye-off' : 'eye'}
+                  name={showCurrentPassword ? 'eyeOff' : 'eye'}
                   size={18}
                   color='currentColor'
                 />
@@ -234,7 +232,7 @@ export default function ChangePasswordPage() {
                 className='absolute right-4 top-1/2 -translate-y-1/2 text-[color:var(--app-text-muted)] hover:text-[color:var(--app-text)] transition-colors'
               >
                 <Icon
-                  name={showNewPassword ? 'eye-off' : 'eye'}
+                  name={showNewPassword ? 'eyeOff' : 'eye'}
                   size={18}
                   color='currentColor'
                 />
@@ -292,7 +290,7 @@ export default function ChangePasswordPage() {
                 className='absolute right-4 top-1/2 -translate-y-1/2 text-[color:var(--app-text-muted)] hover:text-[color:var(--app-text)] transition-colors'
               >
                 <Icon
-                  name={showConfirmPassword ? 'eye-off' : 'eye'}
+                  name={showConfirmPassword ? 'eyeOff' : 'eye'}
                   size={18}
                   color='currentColor'
                 />
