@@ -7,7 +7,9 @@ import {
   ProgressPRsSkeleton,
   ProgressStatsSkeleton,
   ProgressTabsSkeleton,
+  ProgressPhotosGridSkeleton,
 } from '@/components/ui/skeleton'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { toast } from 'sonner'
 
 type ProgressTab = 'weight' | 'macros' | 'workouts' | 'photos'
@@ -39,6 +41,7 @@ interface GoalRow {
 
 interface UserRow {
   weight_kg?: number
+  created_at?: string
 }
 
 interface WorkoutSetRow {
@@ -151,6 +154,13 @@ export default function ProgressPage() {
     total: 0,
     totalPages: 1,
   })
+  const [progressPhotos, setProgressPhotos] = useState<any[]>([])
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
+  const [selectedPhoto, setSelectedPhoto] = useState<any>(null)
+  const [photoModalOpen, setPhotoModalOpen] = useState(false)
+  const [isGoalDrawerOpen, setIsGoalDrawerOpen] = useState(false)
+  const [deleteConfirmOpen, setDeleteConfirmOpen] = useState(false)
+  const [photoToDelete, setPhotoToDelete] = useState<any>(null)
   const isDenseWorkoutChart = range === 30
 
   const refreshData = async (selectedRange: RangeDays) => {
@@ -163,22 +173,24 @@ export default function ProgressPage() {
 
     const { startDate, endDate } = buildDateRange(selectedRange === 30 ? 30 : 7)
 
-    const [goalRes, userRes, bodyRes, workoutRes, mealRes] = await Promise.all([
-      apiClient.get('/api/metrics/goals/current', token),
-      apiClient.get('/api/auth/me', token),
-      apiClient.get(
-        `/api/metrics/body?startDate=${startDate}&endDate=${endDate}&limit=300`,
-        token,
-      ),
-      apiClient.get(
-        `/api/workouts?is_template=false&completed=true&startDate=${startDate}&endDate=${endDate}&limit=300`,
-        token,
-      ),
-      apiClient.get(
-        `/api/nutrition/meals?startDate=${startDate}&endDate=${endDate}`,
-        token,
-      ),
-    ])
+    const [goalRes, userRes, bodyRes, workoutRes, mealRes, photosRes] =
+      await Promise.all([
+        apiClient.get('/api/metrics/goals/current', token),
+        apiClient.get('/api/auth/me', token),
+        apiClient.get(
+          `/api/metrics/body?startDate=${startDate}&endDate=${endDate}&limit=300`,
+          token,
+        ),
+        apiClient.get(
+          `/api/workouts?is_template=false&completed=true&startDate=${startDate}&endDate=${endDate}&limit=300`,
+          token,
+        ),
+        apiClient.get(
+          `/api/nutrition/meals?startDate=${startDate}&endDate=${endDate}`,
+          token,
+        ),
+        apiClient.get(`/api/metrics/progress-photos?limit=50`, token),
+      ])
 
     if (!goalRes.success)
       throw new Error(goalRes.error || 'Failed to load goals')
@@ -190,18 +202,26 @@ export default function ProgressPage() {
       throw new Error(workoutRes.error || 'Failed to load workouts')
     if (!mealRes.success)
       throw new Error(mealRes.error || 'Failed to load meals')
+    if (!photosRes.success)
+      throw new Error(photosRes.error || 'Failed to load progress photos')
 
     const bodyRows: BodyMetricRow[] = Array.isArray(bodyRes.data)
       ? bodyRes.data
       : Array.isArray((bodyRes.data as any)?.logs)
-        ? ((bodyRes.data as any).logs as BodyMetricRow[])
-        : []
+      ? ((bodyRes.data as any).logs as BodyMetricRow[])
+      : []
     const goalsData = (goalRes.data || null) as GoalRow | null
+    const photosData = Array.isArray(photosRes.data)
+      ? photosRes.data
+      : Array.isArray((photosRes.data as any)?.photos)
+      ? (photosRes.data as any).photos
+      : []
     setGoals(goalsData)
     setUser(userRes.data || null)
     setBodyMetrics(bodyRows)
     setWorkouts(normalizeWorkouts(workoutRes.data))
     setMeals(normalizeMeals(mealRes.data))
+    setProgressPhotos(photosData)
 
     if (bodyRows.length > 0 && bodyRows[0]?.weight_kg) {
       setWeightInput(String(Math.round(bodyRows[0].weight_kg * 10) / 10))
@@ -242,8 +262,8 @@ export default function ProgressPage() {
       const items = Array.isArray(payload.logs)
         ? (payload.logs as BodyMetricRow[])
         : Array.isArray(payload)
-          ? (payload as BodyMetricRow[])
-          : []
+        ? (payload as BodyMetricRow[])
+        : []
       const pager = payload.pagination || {}
 
       setWeightLogs((prev) => (append ? [...prev, ...items] : items))
@@ -286,6 +306,16 @@ export default function ProgressPage() {
 
     refresh()
   }, [range])
+
+  // Reset goal weight input when drawer opens
+  useEffect(() => {
+    if (isGoalDrawerOpen) {
+      // Set to current saved goal when opening
+      setGoalWeightInput(
+        goals?.weight_goal_kg ? String(goals.weight_goal_kg) : '80'
+      )
+    }
+  }, [isGoalDrawerOpen, goals?.weight_goal_kg])
 
   const rangeBounds = useMemo(() => buildDateRange(range), [range])
 
@@ -333,18 +363,38 @@ export default function ProgressPage() {
     )
   }, [filteredMetrics])
 
-  const weightValues = useMemo(
-    () => dailyMetrics.map((m) => toNumber(m.weight_kg)),
-    [dailyMetrics],
-  )
+  const weightValues = useMemo(() => {
+    const values = dailyMetrics.map((m) => toNumber(m.weight_kg))
+
+    // If we have only 1 logged weight and a baseline weight, prepend the baseline as the starting point
+    // Use the range start date instead of user.created_at to keep it within the selected period
+    if (values.length === 1 && user?.weight_kg) {
+      const baselineWeight = toNumber(user.weight_kg)
+      return [baselineWeight, ...values]
+    }
+
+    return values
+  }, [dailyMetrics, user?.weight_kg])
+
   const chartDateLabels = useMemo(() => {
-    return dailyMetrics.map((m) =>
+    const labels = dailyMetrics.map((m) =>
       new Date(m.recorded_at).toLocaleDateString(undefined, {
         month: 'short',
         day: 'numeric',
       }),
     )
-  }, [dailyMetrics])
+
+    // If we have only 1 logged weight, prepend the range start date for the baseline
+    if (labels.length === 1 && user?.weight_kg) {
+      const rangeStartLabel = new Date(rangeBounds.startDate).toLocaleDateString(undefined, {
+        month: 'short',
+        day: 'numeric',
+      })
+      return [rangeStartLabel, ...labels]
+    }
+
+    return labels
+  }, [dailyMetrics, user?.weight_kg, rangeBounds.startDate])
 
   const chartGeometry = useMemo(() => {
     const H = 100
@@ -368,23 +418,21 @@ export default function ProgressPage() {
 
   const weightStats = useMemo(() => {
     const rows = dailyMetrics
-    const startRow = rows[0]
     const currentRow = rows[rows.length - 1]
-    const startWeight = toNumber(startRow?.weight_kg, toNumber(user?.weight_kg))
-    const currentWeight = toNumber(
-      currentRow?.weight_kg,
-      toNumber(user?.weight_kg),
-    )
+
+    const startWeight = toNumber(user?.weight_kg)
+
+    const currentWeight = toNumber(currentRow?.weight_kg, startWeight)
     const delta = currentWeight - startWeight
     return {
       startWeight,
       currentWeight,
       delta,
-      startDate: startRow?.recorded_at,
+      startDate: user?.created_at,
       currentDate: currentRow?.recorded_at || new Date().toISOString(),
       goalWeight: toNumber(goals?.weight_goal_kg, currentWeight),
     }
-  }, [dailyMetrics, goals?.weight_goal_kg, user?.weight_kg])
+  }, [dailyMetrics, goals?.weight_goal_kg, user?.weight_kg, user?.created_at])
 
   const workoutDerived = useMemo(() => {
     const inRange = workouts
@@ -605,6 +653,36 @@ export default function ProgressPage() {
     await refreshWeightLogs(nextPage, true)
   }
 
+  const handleDeletePhoto = async () => {
+    if (!photoToDelete) return
+
+    try {
+      const { getAuthToken } = await import('@/lib/auth/auth-token')
+      const { apiClient } = await import('@/lib/api/client')
+      const token = await getAuthToken()
+      if (!token) return
+
+      const response = await apiClient.delete(
+        `/api/metrics/progress-photos/${photoToDelete._id}`,
+        token,
+      )
+
+      if (response.success) {
+        toast.success('Photo deleted')
+        setProgressPhotos(
+          progressPhotos.filter((p) => p._id !== photoToDelete._id),
+        )
+        setPhotoModalOpen(false)
+        setPhotoToDelete(null)
+      } else {
+        toast.error(response.error || 'Failed to delete photo')
+      }
+    } catch (error) {
+      console.error('Error deleting photo:', error)
+      toast.error('Failed to delete photo')
+    }
+  }
+
   return (
     <div className='px-6 pt-4 pb-20'>
       {loading ? (
@@ -640,22 +718,36 @@ export default function ProgressPage() {
           </div>
 
           {(tab === 'weight' || tab === 'workouts' || tab === 'macros') && (
-            <div className='flex items-center justify-end gap-2 mb-3.5'>
-              {[7, 30].map((d) => (
+            <div className='flex items-center justify-between gap-2 mb-3.5'>
+              {tab === 'weight' && (
                 <button
-                  key={d}
-                  type='button'
-                  onClick={() => setRange(d as RangeDays)}
-                  className={`h-8 px-3 rounded-lg text-[11px] font-semibold border transition-colors
-                  ${
-                    range === d
-                      ? 'bg-blue-500/15 border-blue-500/40 text-blue-600'
-                      : 'app-surface border-[color:var(--app-border)] text-[color:var(--app-text-muted)] hover:text-[color:var(--app-text)]'
-                  }`}
+                  onClick={() => setIsGoalDrawerOpen(true)}
+                  className='flex items-center gap-2 px-3 py-2 rounded-xl bg-[#131520] border border-white/10 hover:border-blue-500/30 transition-colors'
                 >
-                  {d} days
+                  <Icon name='settings' size={16} color='#9CA3AF' />
+                  <span className='text-[12px] text-gray-300 font-semibold'>
+                    Manage Goal
+                  </span>
                 </button>
-              ))}
+              )}
+              {(tab === 'workouts' || tab === 'macros') && <div />}
+              <div className='flex items-center gap-2'>
+                {[7, 30].map((d) => (
+                  <button
+                    key={d}
+                    type='button'
+                    onClick={() => setRange(d as RangeDays)}
+                    className={`h-8 px-3 rounded-lg text-[11px] font-semibold border transition-colors
+                    ${
+                      range === d
+                        ? 'bg-blue-500/15 border-blue-500/40 text-blue-600'
+                        : 'app-surface border-[color:var(--app-border)] text-[color:var(--app-text-muted)] hover:text-[color:var(--app-text)]'
+                    }`}
+                  >
+                    {d} days
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
@@ -718,7 +810,9 @@ export default function ProgressPage() {
                         chartGeometry.points
                           .map((p) => `${p.x},${p.y}`)
                           .join(' ') +
-                        ` ${chartGeometry.W - chartGeometry.PAD},${chartGeometry.H} ${chartGeometry.PAD},${chartGeometry.H}`
+                        ` ${chartGeometry.W - chartGeometry.PAD},${
+                          chartGeometry.H
+                        } ${chartGeometry.PAD},${chartGeometry.H}`
                       }
                       fill='url(#weight-grad)'
                     />
@@ -799,7 +893,9 @@ export default function ProgressPage() {
                     >
                       {item.val}
                     </div>
-                    <div className='text-[10px] text-[color:var(--app-text-muted)]'>{item.sub}</div>
+                    <div className='text-[10px] text-[color:var(--app-text-muted)]'>
+                      {item.sub}
+                    </div>
                   </div>
                 ))}
               </div>
@@ -831,32 +927,6 @@ export default function ProgressPage() {
               </div>
 
               <div className='app-surface border rounded-[22px] p-[18px] mb-3.5'>
-                <div className='text-[13px] font-bold text-[color:var(--app-text)] mb-3'>
-                  Goal Weight
-                </div>
-                <div className='grid grid-cols-[1fr_auto] gap-2'>
-                  <input
-                    type='number'
-                    min='20'
-                    max='500'
-                    step='0.1'
-                    value={goalWeightInput}
-                    onChange={(e) => setGoalWeightInput(e.target.value)}
-                    className='bg-[var(--app-surface-2)] border border-[color:var(--app-border)] rounded-xl px-3 py-3 text-[color:var(--app-text)] text-[16px]'
-                    placeholder='Set target kg'
-                  />
-                  <button
-                    type='button'
-                    onClick={handleSaveGoalWeight}
-                    disabled={savingGoalWeight}
-                    className='px-4 py-3 rounded-xl bg-emerald-600 text-white text-[13px] font-semibold disabled:opacity-50'
-                  >
-                    {savingGoalWeight ? 'Saving...' : 'Save Goal'}
-                  </button>
-                </div>
-              </div>
-
-              <div className='app-surface border rounded-[22px] p-[18px] mb-3.5'>
                 <div className='text-[14px] font-bold text-[color:var(--app-text)] mb-3'>
                   Weight Logs
                 </div>
@@ -871,37 +941,66 @@ export default function ProgressPage() {
                   </div>
                 ) : (
                   <div className='space-y-2'>
-                    {weightLogs.map((log) => (
-                      <div
-                        key={log._id}
-                        className='bg-[var(--app-surface-2)] border border-[color:var(--app-border)] rounded-xl px-3 py-2.5 flex items-center justify-between'
-                      >
-                        <div>
-                          <div className='text-[12px] text-[color:var(--app-text)]'>
-                            {new Date(log.recorded_at).toLocaleDateString(
-                              undefined,
-                              {
-                                weekday: 'short',
-                                month: 'short',
-                                day: 'numeric',
-                              },
-                            )}
+                    {weightLogs.map((log, idx) => {
+                      const currentWeight = toNumber(log.weight_kg)
+                      const previousWeight =
+                        idx < weightLogs.length - 1
+                          ? toNumber(weightLogs[idx + 1].weight_kg)
+                          : currentWeight
+                      const weightChange = currentWeight - previousWeight
+                      const hasChange = idx < weightLogs.length - 1 && Math.abs(weightChange) > 0.05
+
+                      return (
+                        <div
+                          key={log._id}
+                          className='app-surface border rounded-xl p-3'
+                        >
+                          <div className='flex items-center justify-between mb-1'>
+                            <div className='text-[13px] text-[color:var(--app-text)] font-semibold'>
+                              {new Date(log.recorded_at).toLocaleDateString(
+                                undefined,
+                                {
+                                  weekday: 'short',
+                                  month: 'short',
+                                  day: 'numeric',
+                                },
+                              )}
+                            </div>
+                            <div className='text-[11px] text-[color:var(--app-text-muted)]'>
+                              {new Date(log.recorded_at).toLocaleTimeString([], {
+                                hour: '2-digit',
+                                minute: '2-digit',
+                              })}
+                            </div>
                           </div>
-                          <div className='text-[11px] text-[color:var(--app-text-muted)]'>
-                            {new Date(log.recorded_at).toLocaleTimeString([], {
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })}
+                          <div className='flex items-center justify-between'>
+                            <div className='text-[11px] text-[color:var(--app-text-muted)]'>
+                              {hasChange ? (
+                                weightChange < 0 ? (
+                                  <span className='text-green-500'>
+                                    {weightChange.toFixed(1)} kg from previous
+                                  </span>
+                                ) : (
+                                  <span className='text-orange-400'>
+                                    +{weightChange.toFixed(1)} kg from previous
+                                  </span>
+                                )
+                              ) : (
+                                'Body weight'
+                              )}
+                            </div>
+                            <div className='text-right'>
+                              <div className='text-[17px] text-[color:var(--app-text)] font-bold leading-none'>
+                                {currentWeight.toFixed(1)}
+                              </div>
+                              <div className='text-[11px] text-[color:var(--app-text-muted)]'>
+                                kg
+                              </div>
+                            </div>
                           </div>
                         </div>
-                        <div className='text-right'>
-                          <div className='text-[17px] font-bold text-[color:var(--app-text)] leading-none'>
-                            {toNumber(log.weight_kg).toFixed(1)}
-                          </div>
-                          <div className='text-[11px] text-[color:var(--app-text-muted)]'>kg</div>
-                        </div>
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 )}
 
@@ -1015,6 +1114,135 @@ export default function ProgressPage() {
             </>
           )}
 
+          {/* Goal Weight Management Drawer */}
+          {isGoalDrawerOpen && (
+            <div className='fixed inset-0 z-50 flex items-end justify-center'>
+              {/* Backdrop */}
+              <div
+                className='absolute inset-0 bg-black/60 backdrop-blur-sm'
+                onClick={() => {
+                  setIsGoalDrawerOpen(false)
+                  // Reset to saved goal when closing without saving
+                  setGoalWeightInput(
+                    goals?.weight_goal_kg ? String(goals.weight_goal_kg) : '80'
+                  )
+                }}
+              />
+
+              {/* Drawer */}
+              <div className='relative w-full max-w-lg bg-[#131520] rounded-t-3xl border-t border-x border-white/10 shadow-2xl animate-slide-up max-h-[85vh] overflow-y-auto'>
+                {/* Handle */}
+                <div className='flex justify-center pt-3 pb-2 sticky top-0 bg-[#131520] z-10'>
+                  <div className='w-10 h-1 bg-white/20 rounded-full' />
+                </div>
+
+                {/* Header */}
+                <div className='px-5 pt-1 pb-3 border-b border-white/5 sticky top-9 bg-[#131520] z-10'>
+                  <div className='flex items-center justify-between'>
+                    <div>
+                      <h2 className='text-[18px] font-bold text-white'>
+                        Goal Weight
+                      </h2>
+                      <p className='text-[12px] text-gray-400 mt-0.5'>
+                        Set your target weight goal
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setIsGoalDrawerOpen(false)
+                        // Reset to saved goal when closing without saving
+                        setGoalWeightInput(
+                          goals?.weight_goal_kg ? String(goals.weight_goal_kg) : '80'
+                        )
+                      }}
+                      className='w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors'
+                    >
+                      <Icon name='x' size={16} color='#64748B' />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className='px-5 py-5'>
+                  {/* Current Goal Display */}
+                  <div className='bg-gradient-to-br from-blue-600/20 via-blue-500/10 to-cyan-500/20 border border-blue-500/30 rounded-2xl p-4 mb-5'>
+                    <div className='text-[11px] text-blue-300 font-semibold uppercase tracking-wide mb-2'>
+                      Current Goal
+                    </div>
+                    <div className='flex items-end gap-2'>
+                      <div className='text-[32px] text-white font-extrabold leading-none'>
+                        {Number(goalWeightInput || goals?.weight_goal_kg || 80).toFixed(1)}
+                      </div>
+                      <div className='text-[16px] text-gray-300 mb-1.5'>kg</div>
+                    </div>
+                    <div className='text-[11px] text-gray-400 mt-1.5'>
+                      Set a realistic target based on your goals
+                    </div>
+                  </div>
+
+                  {/* Slider */}
+                  <div className='mb-5'>
+                    <label className='text-[12px] text-gray-400 font-semibold uppercase tracking-wide mb-2.5 block'>
+                      Adjust Goal
+                    </label>
+                    <input
+                      type='range'
+                      min='40'
+                      max='150'
+                      step='0.5'
+                      value={goalWeightInput || goals?.weight_goal_kg || 80}
+                      onChange={(e) => setGoalWeightInput(e.target.value)}
+                      className='w-full h-2.5 bg-white/10 rounded-lg appearance-none cursor-pointer slider-thumb-blue'
+                    />
+                    <div className='flex items-center justify-between mt-1.5'>
+                      <span className='text-[10px] text-gray-500'>40kg</span>
+                      <span className='text-[12px] text-blue-400 font-semibold'>
+                        {Number(goalWeightInput || goals?.weight_goal_kg || 80).toFixed(1)}kg
+                      </span>
+                      <span className='text-[10px] text-gray-500'>150kg</span>
+                    </div>
+                  </div>
+
+                  {/* Quick Goal Presets */}
+                  <div className='mb-5'>
+                    <label className='text-[12px] text-gray-400 font-semibold uppercase tracking-wide mb-2.5 block'>
+                      Quick Presets
+                    </label>
+                    <div className='grid grid-cols-4 gap-2'>
+                      {[60, 70, 80, 90].map((preset) => (
+                        <button
+                          key={preset}
+                          type='button'
+                          onClick={() => setGoalWeightInput(String(preset))}
+                          className={`py-2 rounded-xl text-[11px] font-semibold border transition-all ${
+                            Number(goalWeightInput || 0) === preset
+                              ? 'bg-blue-500/20 border-blue-500/40 text-blue-400'
+                              : 'bg-[#1a1f35] border-white/10 text-gray-400 hover:border-blue-500/30'
+                          }`}
+                        >
+                          {preset}kg
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Save Button */}
+                  <button
+                    type='button'
+                    onClick={async () => {
+                      await handleSaveGoalWeight()
+                      setIsGoalDrawerOpen(false)
+                    }}
+                    disabled={savingGoalWeight}
+                    className='w-full py-3.5 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-white text-[14px] font-semibold shadow-lg shadow-blue-500/25 hover:shadow-blue-500/40 transition-all disabled:opacity-50 disabled:cursor-not-allowed active:scale-95'
+                  >
+                    {savingGoalWeight ? 'Saving...' : 'Save Goal'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
           {tab === 'macros' && (
             <div className='app-surface border rounded-[22px] p-[18px]'>
               <div className='text-[14px] font-bold text-[color:var(--app-text)] mb-3.5'>
@@ -1066,18 +1294,289 @@ export default function ProgressPage() {
           )}
 
           {tab === 'photos' && (
-            <div className='app-surface border rounded-[22px] p-[18px]'>
-              <div className='text-[14px] font-bold text-[color:var(--app-text)] mb-1'>
-                Progress Photos
-              </div>
-              <div className='text-[12px] text-[color:var(--app-text-muted)]'>
-                Photo timeline is coming soon. Weight, macro, and workout trends
-                are live.
-              </div>
-            </div>
+            <>
+              {loading ? (
+                <ProgressPhotosGridSkeleton />
+              ) : (
+                <>
+                  {/* Upload Button */}
+                  <div className='mb-4'>
+                    <label
+                      htmlFor='photo-upload'
+                      className={`flex items-center justify-center gap-2 py-2.5 px-3 rounded-xl bg-blue-500/20 text-blue-400 border border-blue-500/30 text-[13px] font-semibold transition-colors ${
+                        uploadingPhoto
+                          ? 'opacity-50 cursor-not-allowed'
+                          : 'hover:bg-blue-500/30 cursor-pointer active:scale-95'
+                      }`}
+                    >
+                      {uploadingPhoto ? (
+                        <>
+                          <div className='w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin' />
+                          Uploading...
+                        </>
+                      ) : (
+                        <>
+                          <Icon name='camera' size={16} color='currentColor' />
+                          Add Progress Photo
+                        </>
+                      )}
+                    </label>
+                    <input
+                      id='photo-upload'
+                      type='file'
+                      accept='image/*'
+                      capture='environment'
+                      className='hidden'
+                      disabled={uploadingPhoto}
+                      onChange={async (e) => {
+                        const file = e.target.files?.[0]
+                        if (!file) return
+
+                        // Check file size (max 10MB)
+                        if (file.size > 10 * 1024 * 1024) {
+                          toast.error('Image too large. Max size is 10MB')
+                          e.target.value = ''
+                          return
+                        }
+
+                        setUploadingPhoto(true)
+                        try {
+                          const reader = new FileReader()
+                          reader.onloadend = async () => {
+                            try {
+                              const imageData = reader.result as string
+
+                              const { getAuthToken } = await import(
+                                '@/lib/auth/auth-token'
+                              )
+                              const { apiClient } = await import(
+                                '@/lib/api/client'
+                              )
+                              const token = await getAuthToken()
+                              if (!token) {
+                                setUploadingPhoto(false)
+                                return
+                              }
+
+                              const latestWeight =
+                                bodyMetrics[bodyMetrics.length - 1]?.weight_kg
+
+                              const response = await apiClient.post(
+                                '/api/metrics/progress-photos',
+                                {
+                                  imageData,
+                                  taken_at: new Date().toISOString(),
+                                  weight_kg: latestWeight || undefined,
+                                },
+                                token,
+                              )
+
+                              if (response.success) {
+                                toast.success('Progress photo uploaded!')
+                                setProgressPhotos([
+                                  response.data,
+                                  ...progressPhotos,
+                                ])
+                              } else {
+                                toast.error(
+                                  response.error || 'Failed to upload photo',
+                                )
+                              }
+                            } catch (error) {
+                              console.error('Error uploading photo:', error)
+                              toast.error('Failed to upload photo')
+                            } finally {
+                              setUploadingPhoto(false)
+                            }
+                          }
+                          reader.readAsDataURL(file)
+                        } catch (error) {
+                          console.error('Error reading file:', error)
+                          toast.error('Failed to read image file')
+                          setUploadingPhoto(false)
+                        } finally {
+                          e.target.value = ''
+                        }
+                      }}
+                    />
+                  </div>
+
+                  {/* Upload Overlay */}
+                  {uploadingPhoto && (
+                    <div className='fixed inset-0 z-40 flex items-center justify-center bg-black/70 backdrop-blur-md animate-fade-in'>
+                      <div className='bg-gradient-to-br from-[#131520] to-[#0f1426] rounded-3xl p-8 border border-white/10 shadow-2xl flex flex-col items-center gap-5 max-w-sm mx-4 animate-scale-up'>
+                        {/* Animated Upload Icon */}
+                        <div className='relative'>
+                          {/* Outer spinning ring */}
+                          <div className='w-24 h-24 rounded-full border-4 border-blue-500/20 absolute animate-spin-slow' />
+
+                          {/* Inner pulsing ring */}
+                          <div className='w-24 h-24 rounded-full border-4 border-t-blue-500 border-r-blue-400 border-b-transparent border-l-transparent animate-spin' />
+
+                          {/* Center icon with pulse */}
+                          <div className='absolute inset-0 flex items-center justify-center'>
+                            <div className='w-16 h-16 rounded-full bg-blue-500/20 flex items-center justify-center animate-pulse-slow'>
+                              <Icon name='camera' size={28} color='#3B82F6' />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Text content */}
+                        <div className='text-center space-y-2'>
+                          <div className='text-white text-[18px] font-bold'>
+                            Uploading Photo
+                          </div>
+                          <div className='text-gray-400 text-[13px] max-w-[240px]'>
+                            Processing your progress photo...
+                          </div>
+                        </div>
+
+                        {/* Progress dots */}
+                        <div className='flex gap-1.5'>
+                          <div className='w-2 h-2 rounded-full bg-blue-500 animate-bounce-dot' style={{ animationDelay: '0s' }} />
+                          <div className='w-2 h-2 rounded-full bg-blue-500 animate-bounce-dot' style={{ animationDelay: '0.2s' }} />
+                          <div className='w-2 h-2 rounded-full bg-blue-500 animate-bounce-dot' style={{ animationDelay: '0.4s' }} />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Photos Grid */}
+                  {progressPhotos.length === 0 ? (
+                    <div className='app-surface border rounded-[22px] p-[18px] text-center'>
+                      <div className='w-16 h-16 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center mx-auto mb-3'>
+                        <Icon name='camera' size={28} color='#60A5FA' />
+                      </div>
+                      <div className='text-[16px] font-bold text-[color:var(--app-text)] mb-2'>
+                        No Progress Photos Yet
+                      </div>
+                      <div className='text-[13px] text-[color:var(--app-text-muted)]'>
+                        Start tracking your transformation by adding your first
+                        photo
+                      </div>
+                    </div>
+                  ) : (
+                    <div className='grid grid-cols-2 gap-3'>
+                      {progressPhotos.map((photo) => (
+                        <button
+                          key={photo._id}
+                          onClick={() => {
+                            setSelectedPhoto(photo)
+                            setPhotoModalOpen(true)
+                          }}
+                          className='relative aspect-square rounded-2xl overflow-hidden border border-white/10 hover:border-blue-500/30 transition-all active:scale-95'
+                        >
+                          <img
+                            src={photo.thumbnail_url || photo.photo_url}
+                            alt={photo.caption || 'Progress photo'}
+                            className='w-full h-full object-cover'
+                          />
+                          <div className='absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent' />
+                          <div className='absolute bottom-2 left-2 right-2'>
+                            <div className='text-[11px] text-white font-semibold'>
+                              {formatShortDate(photo.taken_at)}
+                            </div>
+                            {photo.weight_kg && (
+                              <div className='text-[10px] text-white/80'>
+                                {photo.weight_kg.toFixed(1)} kg
+                              </div>
+                            )}
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Photo Detail Modal */}
+                  {photoModalOpen && selectedPhoto && (
+                    <div
+                      className='fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm'
+                      onClick={() => setPhotoModalOpen(false)}
+                    >
+                      <div
+                        className='relative w-full max-w-lg mx-4'
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <button
+                          onClick={() => setPhotoModalOpen(false)}
+                          className='absolute top-4 right-4 w-10 h-10 rounded-full bg-black/50 backdrop-blur-sm flex items-center justify-center text-white hover:bg-black/70 transition-colors z-10'
+                        >
+                          <Icon name='x' size={20} color='white' />
+                        </button>
+
+                        <img
+                          src={selectedPhoto.photo_url}
+                          alt={selectedPhoto.caption || 'Progress photo'}
+                          className='w-full rounded-2xl'
+                        />
+
+                        <div className='mt-4 app-surface border rounded-2xl p-4'>
+                          <div className='flex items-center justify-between mb-3'>
+                            <div>
+                              <div className='text-[14px] font-bold text-[color:var(--app-text)]'>
+                                {new Date(
+                                  selectedPhoto.taken_at,
+                                ).toLocaleDateString('en-US', {
+                                  month: 'long',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                })}
+                              </div>
+                              <div className='text-[11px] text-[color:var(--app-text-muted)] mt-0.5'>
+                                {new Date(selectedPhoto.taken_at).toLocaleTimeString([], {
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                })}
+                              </div>
+                            </div>
+                            <button
+                              onClick={() => {
+                                setPhotoToDelete(selectedPhoto)
+                                setDeleteConfirmOpen(true)
+                              }}
+                              className='w-8 h-8 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors flex items-center justify-center'
+                            >
+                              <Icon name='trash-2' size={16} color='#F87171' />
+                            </button>
+                          </div>
+
+                          {selectedPhoto.weight_kg && (
+                            <div className='flex items-center gap-2 text-[13px] text-[color:var(--app-text-muted)] mb-2'>
+                              <Icon name='activity' size={14} color='#9CA3AF' />
+                              Weight: {selectedPhoto.weight_kg.toFixed(1)} kg
+                            </div>
+                          )}
+
+                          {selectedPhoto.caption && (
+                            <div className='text-[13px] text-[color:var(--app-text-muted)] mt-2'>
+                              {selectedPhoto.caption}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+            </>
           )}
         </>
       )}
+
+      {/* Delete Photo Confirmation Dialog */}
+      <ConfirmDialog
+        isOpen={deleteConfirmOpen}
+        onClose={() => {
+          setDeleteConfirmOpen(false)
+          setPhotoToDelete(null)
+        }}
+        onConfirm={handleDeletePhoto}
+        title="Delete Progress Photo"
+        message="Are you sure you want to delete this photo? This action cannot be undone."
+        confirmText="Delete"
+        cancelText="Cancel"
+        type="danger"
+      />
     </div>
   )
 }

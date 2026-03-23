@@ -35,3 +35,17 @@ export interface WaterLog {
   created_at: string
   updated_at: string
 }
+
+export interface ProgressPhoto {
+  _id: string
+  user_id: string
+  photo_url: string
+  thumbnail_url?: string
+  caption?: string
+  taken_at: string
+  weight_kg?: number
+  body_fat_pct?: number
+  tags?: string[]
+  created_at: string
+  updated_at: string
+}

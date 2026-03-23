@@ -251,6 +251,15 @@ export default function WaterPage() {
     refreshLogs()
   }, [fetchWaterLogs, filter, page])
 
+  // Reset water goal input when drawer opens
+  useEffect(() => {
+    if (isGoalDrawerOpen) {
+      setWaterGoalMl(
+        goalPayload.water_target_ml || DEFAULT_WATER_GOAL_ML
+      )
+    }
+  }, [isGoalDrawerOpen, goalPayload.water_target_ml])
+
   const handleFilterChange = (next: WaterFilter) => {
     setFilter(next)
     setPage(1)
@@ -496,7 +505,10 @@ export default function WaterPage() {
               {/* Backdrop */}
               <div
                 className='absolute inset-0 bg-black/60 backdrop-blur-sm'
-                onClick={() => setIsGoalDrawerOpen(false)}
+                onClick={() => {
+                  setWaterGoalMl(goalPayload.water_target_ml || DEFAULT_WATER_GOAL_ML)
+                  setIsGoalDrawerOpen(false)
+                }}
               />
 
               {/* Drawer */}
@@ -518,7 +530,10 @@ export default function WaterPage() {
                       </p>
                     </div>
                     <button
-                      onClick={() => setIsGoalDrawerOpen(false)}
+                      onClick={() => {
+                        setWaterGoalMl(goalPayload.water_target_ml || DEFAULT_WATER_GOAL_ML)
+                        setIsGoalDrawerOpen(false)
+                      }}
                       className='w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors'
                     >
                       <Icon name='x' size={16} color='#64748B' />

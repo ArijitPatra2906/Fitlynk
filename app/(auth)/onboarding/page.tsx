@@ -269,7 +269,7 @@ export default function OnboardingPage() {
               htmlFor='weight_kg'
               className='text-[11px] text-gray-400 uppercase tracking-wider mb-1 block'
             >
-              Current Weight ({formData.units === 'metric' ? 'kg' : 'lbs'})
+              Starting Weight ({formData.units === 'metric' ? 'kg' : 'lbs'})
             </label>
             <input
               id='weight_kg'

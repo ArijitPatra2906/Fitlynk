@@ -318,6 +318,19 @@ export function ProgressPRsSkeleton() {
   )
 }
 
+export function ProgressPhotosGridSkeleton() {
+  return (
+    <>
+      <Skeleton className='h-12 w-full rounded-xl mb-4' />
+      <div className='grid grid-cols-2 gap-3'>
+        {[...Array(6)].map((_, i) => (
+          <Skeleton key={i} className='aspect-square rounded-2xl' />
+        ))}
+      </div>
+    </>
+  )
+}
+
 // Profile-specific skeleton components
 export function ProfileHeaderSkeleton() {
   return (

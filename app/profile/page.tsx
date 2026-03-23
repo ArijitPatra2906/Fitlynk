@@ -473,7 +473,7 @@ export default function ProfilePage() {
                 val: formatHeight(userData?.height, userData?.units),
               },
               {
-                label: 'Weight',
+                label: 'Baseline Weight',
                 val: formatWeight(userData?.weight_kg, userData?.units),
               },
               { label: 'Age', val: calculateAge(userData?.date_of_birth) },
@@ -832,14 +832,14 @@ export default function ProfilePage() {
                   value={weightInput}
                   onChange={(e) => setWeightInput(e.target.value)}
                   placeholder={
-                    unitsInput === 'metric' ? 'Weight (kg)' : 'Weight (lbs)'
+                    unitsInput === 'metric' ? 'Baseline Weight (kg)' : 'Baseline Weight (lbs)'
                   }
                   disabled
                   className='bg-[#1a1f35] border border-white/10 rounded-xl px-3 py-2.5 text-gray-400 text-[14px] opacity-70 cursor-not-allowed'
                 />
               </div>
               <div className='text-[11px] text-gray-500 -mt-1'>
-                Change your weight from Weight Log.
+                Baseline weight is set during onboarding. Track current weight from Progress page.
               </div>
               <input
                 type='date'
