@@ -67,7 +67,8 @@ function TodosPageContent() {
       let url = '/api/todos'
       const params: string[] = []
 
-      if (dateRange !== 'all') {
+      // In calendar view, fetch all todos regardless of date range
+      if (dateRange !== 'all' && viewMode !== 'calendar') {
         params.push(`dateRange=${dateRange}`)
       }
 
@@ -95,7 +96,7 @@ function TodosPageContent() {
     } finally {
       setLoading(false)
     }
-  }, [statusFilter, dateRange, searchQuery, router])
+  }, [statusFilter, dateRange, searchQuery, viewMode, router])
 
   // Debounce search query
   useEffect(() => {

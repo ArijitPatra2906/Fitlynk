@@ -207,7 +207,7 @@ export function CalendarView({
                   isCurrentDay
                     ? 'bg-blue-500/20 border-blue-500/40 ring-2 ring-blue-500/30'
                     : isPastDay
-                    ? 'bg-[#0B0D17] border-white/5 cursor-not-allowed'
+                    ? 'bg-[#0B0D17] border-white/5 cursor-pointer'
                     : 'bg-[#131520] border-white/10 hover:border-blue-500/30 cursor-pointer'
                 }`}
               >
