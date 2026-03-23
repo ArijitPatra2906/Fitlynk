@@ -143,28 +143,8 @@ export default function ChangePasswordPage() {
 
   return (
     <div className='h-full flex flex-col overflow-hidden'>
-      {/* Header */}
-      <div className='flex-shrink-0 app-surface border-b border-[color:var(--app-border)] px-6 pt-safe py-4'>
-        <div className='flex items-center gap-3'>
-          <button
-            onClick={() => router.back()}
-            className='w-9 h-9 rounded-xl bg-[color:var(--app-surface)] border border-[color:var(--app-border)] flex items-center justify-center hover:bg-[color:var(--app-surface-2)] transition-colors'
-          >
-            <Icon name='arrow-left' size={18} color='var(--app-text)' />
-          </button>
-          <div>
-            <h1 className='text-[20px] font-bold text-[color:var(--app-text)]'>
-              Change Password
-            </h1>
-            <p className='text-[12px] text-[color:var(--app-text-muted)]'>
-              Update your account password
-            </p>
-          </div>
-        </div>
-      </div>
-
       {/* Content */}
-      <div className='flex-1 overflow-y-auto px-6 py-6'>
+      <div className='flex-1 overflow-y-auto pb-28 px-6 py-6'>
         <div className='max-w-lg mx-auto space-y-6'>
           {/* Security Notice */}
           <div className='app-surface border border-blue-500/30 bg-blue-500/5 rounded-2xl p-4'>

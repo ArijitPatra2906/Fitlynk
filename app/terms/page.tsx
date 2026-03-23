@@ -8,23 +8,8 @@ export default function TermsPage() {
 
   return (
     <div className='h-full flex flex-col overflow-hidden'>
-      {/* Header */}
-      <div className='flex-shrink-0 app-surface border-b border-[color:var(--app-border)] px-6 pt-safe py-4'>
-        <div className='flex items-center gap-3'>
-          <button
-            onClick={() => router.back()}
-            className='w-9 h-9 rounded-xl bg-[color:var(--app-surface)] border border-[color:var(--app-border)] flex items-center justify-center hover:bg-[color:var(--app-surface-2)] transition-colors'
-          >
-            <Icon name='arrow-left' size={18} color='var(--app-text)' />
-          </button>
-          <h1 className='text-[20px] font-bold text-[color:var(--app-text)]'>
-            Terms & Conditions
-          </h1>
-        </div>
-      </div>
-
       {/* Content */}
-      <div className='flex-1 overflow-y-auto px-6 py-6'>
+      <div className='flex-1 overflow-y-auto pb-28 px-6 py-6'>
         <div className='max-w-3xl mx-auto space-y-6'>
           <div className='text-[13px] text-[color:var(--app-text-muted)] mb-6'>
             Last updated: March 23, 2026

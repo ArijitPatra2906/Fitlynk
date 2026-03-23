@@ -39,6 +39,20 @@ export function AppLayout({ children }: AppLayoutProps) {
 
   const authPages = ['/', '/login', '/register', '/onboarding']
 
+  // Pages that should NOT show the global quick log FAB
+  const pagesWithoutFab = [
+    '/',
+    '/login',
+    '/register',
+    '/onboarding',
+    '/support',
+    '/help',
+    '/tutorial',
+    '/privacy',
+    '/terms',
+    '/change-password',
+  ]
+
   // Pages that need the full layout wrapper (header + content + nav)
   const pagesWithLayout = [
     '/dashboard',
@@ -58,13 +72,19 @@ export function AppLayout({ children }: AppLayoutProps) {
     '/templates',
     '/exercises',
     '/notifications',
+    '/support',
+    '/tutorial',
+    '/help',
+    '/privacy',
+    '/terms',
+    '/change-password',
   ]
 
   // Check if current page should show bottom nav
   const shouldShowBottomNav = pagesWithBottomNav.includes(pathname)
   const shouldHideBottomNav = pagesWithoutBottomNav.includes(pathname)
   const showBottomNav = shouldShowBottomNav && !shouldHideBottomNav
-  const showGlobalFab = !authPages.includes(pathname)
+  const showGlobalFab = !pagesWithoutFab.includes(pathname)
 
   // Check if page needs layout wrapper
   const needsLayout = pagesWithLayout.includes(pathname)

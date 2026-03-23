@@ -135,14 +135,8 @@ export default function TutorialPage() {
 
   return (
     <div className='h-full flex flex-col overflow-hidden bg-gradient-to-b from-[#0f1426] to-[#131520]'>
-      {/* Header */}
-      <div className='flex-shrink-0 px-6 pt-safe py-4 flex items-center justify-between'>
-        <button
-          onClick={handleSkip}
-          className='text-[13px] font-medium text-gray-400 hover:text-white transition-colors'
-        >
-          Skip Tutorial
-        </button>
+      {/* Header - Progress Dots */}
+      <div className='flex-shrink-0 px-6 py-4 flex items-center justify-center'>
         <div className='flex gap-1.5'>
           {TUTORIAL_SLIDES.map((_, index) => (
             <div

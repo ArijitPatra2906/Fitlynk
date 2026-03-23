@@ -20,11 +20,15 @@ export function BottomNav() {
     if (pathname === tabHref || pathname === tabHref + '/') return true
 
     // Special cases for nested routes
-    if (tabId === 'home' && (pathname?.startsWith('/dashboard'))) return true
+    if (tabId === 'home' && pathname?.startsWith('/dashboard')) return true
     if (tabId === 'exercise' && pathname?.startsWith('/exercise')) return true
-    if (tabId === 'nutrition' && (pathname?.startsWith('/nutrition') || pathname?.startsWith('/food-search'))) return true
+    if (tabId === 'nutrition' && pathname?.startsWith('/nutrition')) return true
     if (tabId === 'todos' && pathname?.startsWith('/todos')) return true
-    if (tabId === 'profile' && (pathname?.startsWith('/profile') || pathname?.startsWith('/settings'))) return true
+    if (
+      tabId === 'profile' &&
+      (pathname?.startsWith('/profile') || pathname?.startsWith('/settings'))
+    )
+      return true
 
     return false
   }

@@ -141,6 +141,48 @@ const notificationSettingsConfig: AppBarConfig = {
   showAvatar: true,
 }
 
+const supportConfig: AppBarConfig = {
+  title: 'Support',
+  showBack: true,
+  showNotifications: true,
+  showAvatar: true,
+}
+
+const tutorialConfig: AppBarConfig = {
+  title: 'Tutorial',
+  showBack: true,
+  showNotifications: true,
+  showAvatar: true,
+}
+
+const helpConfig: AppBarConfig = {
+  title: 'Help Center',
+  showBack: true,
+  showNotifications: true,
+  showAvatar: true,
+}
+
+const privacyConfig: AppBarConfig = {
+  title: 'Privacy Policy',
+  showBack: true,
+  showNotifications: true,
+  showAvatar: true,
+}
+
+const termsConfig: AppBarConfig = {
+  title: 'Terms of Service',
+  showBack: true,
+  showNotifications: true,
+  showAvatar: true,
+}
+
+const changePasswordConfig: AppBarConfig = {
+  title: 'Change Password',
+  showBack: true,
+  showNotifications: true,
+  showAvatar: true,
+}
+
 const routeConfigs: Record<string, AppBarConfig> = {
   '/dashboard': dashboardConfig,
   // Temporarily disabled - step log not working properly
@@ -158,6 +200,12 @@ const routeConfigs: Record<string, AppBarConfig> = {
   '/exercises': exercisesConfig,
   '/notifications': notificationsConfig,
   '/settings/notifications': notificationSettingsConfig,
+  '/support': supportConfig,
+  '/tutorial': tutorialConfig,
+  '/help': helpConfig,
+  '/privacy': privacyConfig,
+  '/terms': termsConfig,
+  '/change-password': changePasswordConfig,
 }
 
 export function AppBar() {
