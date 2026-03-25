@@ -10,6 +10,7 @@ interface WorkoutNameDialogProps {
   title: string
   placeholder?: string
   defaultValue?: string
+  submitButtonText?: string
 }
 
 export function WorkoutNameDialog({
@@ -19,16 +20,21 @@ export function WorkoutNameDialog({
   title,
   placeholder = 'Enter workout name',
   defaultValue = '',
+  submitButtonText = 'Start',
 }: WorkoutNameDialogProps) {
   const [name, setName] = useState(defaultValue)
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   if (!isOpen) return null
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (name.trim()) {
+    if (name.trim() && !isSubmitting) {
+      setIsSubmitting(true)
       onSubmit(name.trim())
       setName('')
+      // Reset after a short delay
+      setTimeout(() => setIsSubmitting(false), 500)
     }
   }
 
@@ -68,10 +74,10 @@ export function WorkoutNameDialog({
             </button>
             <button
               type='submit'
-              disabled={!name.trim()}
+              disabled={!name.trim() || isSubmitting}
               className='flex-1 py-3 rounded-2xl bg-gradient-to-br from-blue-600 to-blue-700 text-white font-bold text-[15px] shadow-[0_8px_24px_rgba(59,130,246,0.35)] disabled:opacity-50 disabled:cursor-not-allowed transition-opacity'
             >
-              Start
+              {isSubmitting ? 'Starting...' : submitButtonText}
             </button>
           </div>
         </form>

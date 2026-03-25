@@ -252,7 +252,7 @@ export function FoodSearchModal({
                     type='number'
                     value={servingSize}
                     onChange={(e) => setServingSize(e.target.value)}
-                    className='flex-1 px-4 py-3 bg-[#131520] border border-white/10 rounded-xl text-[color:var(--app-text)] focus:outline-none focus:border-blue-500/50'
+                    className='flex-1 min-w-0 px-4 py-3 bg-[#131520] border border-white/10 rounded-xl text-[color:var(--app-text)] focus:outline-none focus:border-blue-500/50'
                     placeholder='100'
                     min='0'
                     step='1'
@@ -260,7 +260,7 @@ export function FoodSearchModal({
                   <select
                     value={servingUnit}
                     onChange={(e) => setServingUnit(e.target.value)}
-                    className='px-4 py-3 bg-[#131520] border border-white/10 rounded-xl text-[color:var(--app-text)] focus:outline-none focus:border-blue-500/50'
+                    className='flex-shrink-0 w-auto min-w-[100px] sm:min-w-[120px] px-3 sm:px-4 py-3 bg-[#131520] border border-white/10 rounded-xl text-[color:var(--app-text)] focus:outline-none focus:border-blue-500/50'
                   >
                     <option value='g'>grams (g)</option>
                   </select>

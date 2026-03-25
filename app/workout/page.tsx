@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { getAuthToken } from '@/lib/auth/auth-token'
 import { apiClient } from '@/lib/api/client'
 import { ExerciseModal } from '@/components/ui/exercise-modal'
+import { WorkoutNameDialog } from '@/components/workout/workout-name-dialog'
 import { toast } from 'sonner'
 import { Exercise, Workout, ExerciseInWorkout } from '@/types'
 import { WorkoutPageSkeleton } from '@/components/ui/skeleton'
@@ -24,7 +25,7 @@ function WorkoutPageContent() {
   const searchParams = useSearchParams()
   const templateId = searchParams.get('templateId')
   const workoutId = searchParams.get('workoutId')
-  const isTemplateMode = searchParams.get('mode') === 'template'
+  const modeFromUrl = searchParams.get('mode') === 'template'
   const nameFromUrl = searchParams.get('name')
 
   const [timer, setTimer] = useState(0)
@@ -33,6 +34,7 @@ function WorkoutPageContent() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [showExerciseModal, setShowExerciseModal] = useState(false)
+  const [showTemplateNameDialog, setShowTemplateNameDialog] = useState(false)
   const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null)
   const [workoutName, setWorkoutName] = useState(nameFromUrl || '')
   const [isPaused, setIsPaused] = useState(false)
@@ -40,7 +42,12 @@ function WorkoutPageContent() {
   const [historicalMaxByExercise, setHistoricalMaxByExercise] = useState<
     Record<string, number>
   >({})
+  const [caloriesBurned, setCaloriesBurned] = useState(0)
+  const [userWeight, setUserWeight] = useState<number | null>(null)
   const initializedRef = useRef(false)
+
+  // Determine if in template mode based on workout data OR URL parameter
+  const isTemplateMode = workout?.is_template || modeFromUrl
   const isCompleted = !isTemplateMode && !!workout?.ended_at
 
   useEffect(() => {
@@ -99,12 +106,39 @@ function WorkoutPageContent() {
     }
   }, [saveTimeout])
 
+  // Fetch user weight for calorie calculation
   useEffect(() => {
-    // Prevent duplicate initialization in React StrictMode
-    if (initializedRef.current) return
-    initializedRef.current = true
+    const fetchUserWeight = async () => {
+      try {
+        const token = await getAuthToken()
+        if (!token) return
 
+        const res = await apiClient.get('/api/auth/profile', token)
+        if (res.success && res.data?.weight_kg) {
+          setUserWeight(res.data.weight_kg)
+        }
+      } catch (error) {
+        console.error('Error fetching user weight:', error)
+      }
+    }
+
+    fetchUserWeight()
+  }, [])
+
+  // Update calories whenever exercises or timer changes
+  useEffect(() => {
+    if (!isTemplateMode && !isPaused) {
+      const calories = calculateCaloriesBurned(exercises)
+      setCaloriesBurned(calories)
+    }
+  }, [exercises, timer, userWeight, workout?.started_at, workout?.ended_at, isTemplateMode, isPaused])
+
+  useEffect(() => {
     const initWorkout = async () => {
+      // Prevent double initialization
+      if (initializedRef.current) return
+      initializedRef.current = true
+
       try {
         const token = await getAuthToken()
         if (!token) {
@@ -123,7 +157,7 @@ function WorkoutPageContent() {
 
             // Create a new workout based on the template
             const newWorkout: Workout = {
-              name: template.name || 'Workout',
+              name: nameFromUrl || template.name || 'Workout',
               started_at: new Date().toISOString(),
               exercises: template.exercises || [],
               is_template: false,
@@ -138,7 +172,7 @@ function WorkoutPageContent() {
             if (createRes.success) {
               setWorkout(createRes.data)
               setExercises(createRes.data.exercises || [])
-              setWorkoutName(createRes.data.name || template.name || 'Workout')
+              setWorkoutName(createRes.data.name || 'Workout')
               await loadHistoricalMaxes(token, createRes.data._id)
             }
           }
@@ -149,6 +183,8 @@ function WorkoutPageContent() {
             token,
           )
           if (workoutRes.success && workoutRes.data) {
+            console.log('[INIT] Loaded workout:', workoutRes.data)
+            console.log('[INIT] is_template:', workoutRes.data.is_template)
             setWorkout(workoutRes.data)
             setExercises(workoutRes.data.exercises || [])
             setWorkoutName(workoutRes.data.name || 'Workout')
@@ -159,11 +195,15 @@ function WorkoutPageContent() {
           const workoutName =
             nameFromUrl ||
             (isTemplateMode ? 'Untitled Template' : 'Untitled Workout')
-          const newWorkout: Workout = {
+          const newWorkout: any = {
             name: workoutName,
-            started_at: new Date().toISOString(),
             exercises: [],
             is_template: isTemplateMode,
+          }
+
+          // Only set started_at for actual workouts, not templates
+          if (!isTemplateMode) {
+            newWorkout.started_at = new Date().toISOString()
           }
 
           const res = await apiClient.post('/api/workouts', newWorkout, token)
@@ -206,6 +246,102 @@ function WorkoutPageContent() {
       return 0
     }
     return Math.floor((endMs - startMs) / 1000)
+  }
+
+  const calculateCaloriesBurned = (exercises: ExerciseInWorkout[]): number => {
+    console.log('[CALORIES] Calculate called:', {
+      hasStartedAt: !!workout?.started_at,
+      isTemplateMode,
+      exercisesCount: exercises.length,
+    })
+
+    if (!workout?.started_at || isTemplateMode) {
+      console.log('[CALORIES] Returning 0 - no started_at or template mode')
+      return 0
+    }
+
+    // Calculate time elapsed (in hours) for completed sets
+    const now = workout.ended_at ? new Date(workout.ended_at).getTime() : Date.now()
+    const startTime = new Date(workout.started_at).getTime()
+    const elapsedHours = (now - startTime) / (1000 * 60 * 60)
+
+    console.log('[CALORIES] Time elapsed:', {
+      startTime,
+      now,
+      elapsedHours,
+    })
+
+    if (elapsedHours <= 0) {
+      console.log('[CALORIES] Returning 0 - elapsedHours <= 0')
+      return 0
+    }
+
+    // Count completed sets to estimate workout intensity
+    let completedSets = 0
+    let totalSets = 0
+    let hasCardio = false
+    let hasStrength = false
+
+    exercises.forEach((ex) => {
+      const exerciseObj = typeof ex.exercise_id === 'object' ? ex.exercise_id : null
+      const category = exerciseObj?.category
+
+      if (category === 'cardio') hasCardio = true
+      else hasStrength = true
+
+      ex.sets.forEach((set) => {
+        totalSets++
+        if (set.completed_at && !set.is_warmup) {
+          completedSets++
+        }
+      })
+    })
+
+    // Determine MET value based on exercise types
+    const STRENGTH_MET = 5
+    const CARDIO_MET = 8
+    const MIXED_MET = 6.5
+    let met = STRENGTH_MET
+
+    if (hasCardio && hasStrength) {
+      met = MIXED_MET
+    } else if (hasCardio) {
+      met = CARDIO_MET
+    }
+
+    // If we have user weight, use MET calculation
+    if (userWeight && userWeight > 0) {
+      // Scale the calories by the proportion of completed sets
+      const completionRatio = totalSets > 0 ? completedSets / totalSets : 0
+      const calories = Math.round(met * userWeight * elapsedHours * completionRatio)
+      console.log('[CALORIES] MET-based calculation:', {
+        met,
+        userWeight,
+        elapsedHours,
+        completedSets,
+        totalSets,
+        completionRatio,
+        calories,
+      })
+      return calories
+    }
+
+    // Fallback: use volume-based estimation
+    const volume = exercises.reduce((total, ex) => {
+      return total + ex.sets.reduce((setTotal, set) => {
+        if (set.completed_at && !set.is_warmup) {
+          return setTotal + (set.weight_kg || 0) * (set.reps || 0)
+        }
+        return setTotal
+      }, 0)
+    }, 0)
+
+    const calories = Math.round(volume * 0.05)
+    console.log('[CALORIES] Volume-based calculation:', {
+      volume,
+      calories,
+    })
+    return calories
   }
 
   const getExerciseKey = (exercise: any): string | null => {
@@ -266,7 +402,7 @@ function WorkoutPageContent() {
   }
 
   // Debounced auto-save function
-  const autoSaveWorkout = async (updatedExercises: ExerciseInWorkout[]) => {
+  const autoSaveWorkout = async (updatedExercises: ExerciseInWorkout[], calories?: number) => {
     if (!workout?._id) return
 
     try {
@@ -282,11 +418,29 @@ function WorkoutPageContent() {
             : ex.exercise_id,
       }))
 
+      // Use provided calories or calculate them
+      const caloriesToSave = calories !== undefined ? calories : calculateCaloriesBurned(updatedExercises)
+
+      // For templates, remove started_at and ended_at to prevent them from becoming workout sessions
+      const workoutPayload = isTemplateMode
+        ? {
+            name: workout.name,
+            exercises: exercisesForBackend,
+            is_template: true,
+          }
+        : { ...workout, exercises: exercisesForBackend, calories: caloriesToSave }
+
+      console.log('[AUTO-SAVE] isTemplateMode:', isTemplateMode)
+      console.log('[AUTO-SAVE] workout.is_template:', workout.is_template)
+      console.log('[AUTO-SAVE] Payload:', workoutPayload)
+
       const res = await apiClient.put(
         `/api/workouts/${workout._id}`,
-        { ...workout, exercises: exercisesForBackend },
+        workoutPayload,
         token,
       )
+
+      console.log('[AUTO-SAVE] Response:', res)
 
       // Sync with server response
       if (res.success && res.data) {
@@ -298,13 +452,13 @@ function WorkoutPageContent() {
   }
 
   // Debounced save wrapper
-  const debouncedSave = (updatedExercises: ExerciseInWorkout[]) => {
+  const debouncedSave = (updatedExercises: ExerciseInWorkout[], calories?: number) => {
     if (saveTimeout) {
       clearTimeout(saveTimeout)
     }
 
     const timeout = setTimeout(() => {
-      autoSaveWorkout(updatedExercises)
+      autoSaveWorkout(updatedExercises, calories)
     }, 1000) // Wait 1 second after last change
 
     setSaveTimeout(timeout)
@@ -321,7 +475,12 @@ function WorkoutPageContent() {
     }
 
     setExercises(updatedExercises)
-    debouncedSave(updatedExercises)
+
+    // Recalculate calories immediately with updated exercises
+    const newCalories = calculateCaloriesBurned(updatedExercises)
+    setCaloriesBurned(newCalories)
+
+    debouncedSave(updatedExercises, newCalories)
   }
 
   const addSet = (exerciseIndex: number) => {
@@ -338,7 +497,12 @@ function WorkoutPageContent() {
 
     exercise.sets.push(newSet)
     setExercises(updatedExercises)
-    debouncedSave(updatedExercises)
+
+    // Recalculate calories immediately with updated exercises
+    const newCalories = calculateCaloriesBurned(updatedExercises)
+    setCaloriesBurned(newCalories)
+
+    debouncedSave(updatedExercises, newCalories)
   }
 
   const removeSet = (exerciseIndex: number, setIndex: number) => {
@@ -355,7 +519,12 @@ function WorkoutPageContent() {
       }))
 
     setExercises(updatedExercises)
-    debouncedSave(updatedExercises)
+
+    // Recalculate calories immediately with updated exercises
+    const newCalories = calculateCaloriesBurned(updatedExercises)
+    setCaloriesBurned(newCalories)
+
+    debouncedSave(updatedExercises, newCalories)
   }
 
   const updateSet = (
@@ -367,7 +536,12 @@ function WorkoutPageContent() {
     const updatedExercises = [...exercises]
     updatedExercises[exerciseIndex].sets[setIndex][field] = value
     setExercises(updatedExercises)
-    debouncedSave(updatedExercises)
+
+    // Recalculate calories immediately with updated exercises
+    const newCalories = calculateCaloriesBurned(updatedExercises)
+    setCaloriesBurned(newCalories)
+
+    debouncedSave(updatedExercises, newCalories)
   }
 
   // Auto-save workout name changes
@@ -429,6 +603,7 @@ function WorkoutPageContent() {
         name: finalName,
         ended_at: new Date().toISOString(),
         exercises: exercisesForBackend,
+        calories: caloriesBurned,
       }
 
       const res = await apiClient.put(
@@ -594,6 +769,34 @@ function WorkoutPageContent() {
     }
   }
 
+  const saveAsTemplate = async (templateName: string) => {
+    if (!workout?._id) return
+
+    try {
+      setSaving(true)
+      const token = await getAuthToken()
+      if (!token) return
+
+      const res = await apiClient.post(
+        `/api/workouts/${workout._id}/to-template`,
+        { name: templateName },
+        token,
+      )
+
+      if (res.success) {
+        toast.success('Template created successfully!')
+        setShowTemplateNameDialog(false)
+      } else {
+        toast.error('Failed to create template')
+      }
+    } catch (err) {
+      console.error('Error creating template:', err)
+      toast.error('Failed to create template')
+    } finally {
+      setSaving(false)
+    }
+  }
+
   const calculateStats = () => {
     let totalSets = 0
     let totalVolume = 0
@@ -704,6 +907,10 @@ function WorkoutPageContent() {
     const updatedExercises = exercises.filter((_, i) => i !== exerciseIndex)
     setExercises(updatedExercises)
 
+    // Recalculate calories immediately with updated exercises
+    const newCalories = calculateCaloriesBurned(updatedExercises)
+    setCaloriesBurned(newCalories)
+
     // Auto-save to backend
     if (workout?._id) {
       try {
@@ -719,7 +926,7 @@ function WorkoutPageContent() {
 
           const res = await apiClient.put(
             `/api/workouts/${workout._id}`,
-            { ...workout, exercises: updatedExercisesForBackend },
+            { ...workout, exercises: updatedExercisesForBackend, calories: newCalories },
             token,
           )
           if (!res.success) {
@@ -773,13 +980,22 @@ function WorkoutPageContent() {
                 {saving ? 'Saving...' : 'Save'}
               </button>
             ) : isCompleted ? (
-              <button
-                onClick={resumeWorkout}
-                disabled={saving}
-                className='h-9 px-3.5 rounded-xl border border-orange-500/30 bg-orange-500/15 text-orange-300 text-[12px] font-semibold disabled:opacity-50'
-              >
-                {saving ? 'Resuming...' : 'Resume'}
-              </button>
+              <>
+                <button
+                  onClick={() => setShowTemplateNameDialog(true)}
+                  disabled={saving}
+                  className='h-9 px-3.5 rounded-xl border border-purple-500/30 bg-purple-500/15 text-purple-300 text-[12px] font-semibold disabled:opacity-50'
+                >
+                  Save as Template
+                </button>
+                <button
+                  onClick={resumeWorkout}
+                  disabled={saving}
+                  className='h-9 px-3.5 rounded-xl border border-orange-500/30 bg-orange-500/15 text-orange-300 text-[12px] font-semibold disabled:opacity-50'
+                >
+                  {saving ? 'Resuming...' : 'Resume'}
+                </button>
+              </>
             ) : (
               <>
                 {isPaused ? (
@@ -827,7 +1043,7 @@ function WorkoutPageContent() {
         </div>
 
         {!isTemplateMode && (
-          <div className='grid grid-cols-3 gap-2'>
+          <div className='grid grid-cols-4 gap-2'>
             <div className='rounded-xl border border-white/8 bg-[#0C1222] px-2 py-2 text-center'>
               <div className='text-[14px] font-bold text-white'>
                 {stats.totalSets}
@@ -842,6 +1058,14 @@ function WorkoutPageContent() {
               </div>
               <div className='text-[10px] text-gray-400 uppercase tracking-wide'>
                 Volume
+              </div>
+            </div>
+            <div className='rounded-xl border border-white/8 bg-[#0C1222] px-2 py-2 text-center'>
+              <div className='text-[14px] font-bold text-white'>
+                {caloriesBurned}
+              </div>
+              <div className='text-[10px] text-gray-400 uppercase tracking-wide'>
+                kcal
               </div>
             </div>
             <div className='rounded-xl border border-white/8 bg-[#0C1222] px-2 py-2 text-center'>
@@ -955,6 +1179,7 @@ function WorkoutPageContent() {
                         )
                       }
                       placeholder='kg'
+                      disabled={!!set.completed_at}
                       className={`
       rounded-lg sm:rounded-xl
       py-1.5 sm:py-2
@@ -965,6 +1190,8 @@ function WorkoutPageContent() {
       w-full
       focus:outline-none
       placeholder:text-gray-600
+      disabled:cursor-not-allowed
+      disabled:opacity-75
       ${
         set.completed_at
           ? 'bg-green-500/10 border border-green-500/25'
@@ -987,6 +1214,7 @@ function WorkoutPageContent() {
                         )
                       }
                       placeholder='reps'
+                      disabled={!!set.completed_at}
                       className={`
       rounded-lg sm:rounded-xl
       py-1.5 sm:py-2
@@ -997,6 +1225,8 @@ function WorkoutPageContent() {
       w-full
       focus:outline-none
       placeholder:text-gray-600
+      disabled:cursor-not-allowed
+      disabled:opacity-75
       ${
         set.completed_at
           ? 'bg-green-500/10 border border-green-500/25'
@@ -1071,6 +1301,16 @@ function WorkoutPageContent() {
             ? ex.exercise_id._id
             : ex.exercise_id,
         )}
+      />
+
+      <WorkoutNameDialog
+        isOpen={showTemplateNameDialog}
+        onClose={() => setShowTemplateNameDialog(false)}
+        onSubmit={saveAsTemplate}
+        title='Save as Template'
+        placeholder='Enter template name'
+        defaultValue={`${workoutName || 'Workout'} Template`}
+        submitButtonText='Save'
       />
     </div>
   )

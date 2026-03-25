@@ -5,7 +5,7 @@ import { usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { Icon } from '@/components/ui/icon'
 
-const HIDDEN_PATHS = ['/', '/login', '/register', '/onboarding']
+const HIDDEN_PATHS = ['/', '/login', '/register', '/onboarding', '/workout', '/templates']
 const WITH_BOTTOM_NAV = [
   '/dashboard',
   '/steps',

@@ -681,7 +681,7 @@ export default function DashboardPage() {
           <div className='grid grid-cols-2 gap-2.5 mb-4'>
             <>
               {/* Streak Card */}
-              <div className='order-1 bg-[#131520] border border-white/5 rounded-2xl p-3.5 min-h-[154px] flex flex-col'>
+              <div className='order-1 bg-[#131520] border border-white/5 rounded-2xl p-3.5 min-h-[140px] flex flex-col'>
                 <div className='flex items-center gap-2 mb-2'>
                   <div className='w-7 h-7 rounded-lg bg-red-500/15 flex items-center justify-center'>
                     <Icon name='fire' size={14} color='#EF4444' />
@@ -789,7 +789,7 @@ export default function DashboardPage() {
               </button> */}
 
               {/* Active Minutes Card */}
-              <div className='order-2 bg-[#131520] border border-white/5 rounded-2xl p-3.5 min-h-[154px] flex flex-col'>
+              <div className='order-2 bg-[#131520] border border-white/5 rounded-2xl p-3.5 min-h-[140px] flex flex-col'>
                 <div className='flex items-center gap-2 mb-2'>
                   <div className='w-7 h-7 rounded-lg bg-green-500/15 flex items-center justify-center'>
                     <Icon name='zap' size={14} color='#10B981' />
@@ -800,29 +800,14 @@ export default function DashboardPage() {
                 </div>
                 <div className='flex items-baseline gap-1'>
                   <div className='text-[28px] font-extrabold text-white leading-none'>
-                    {activeMinutes + workoutActiveMinutes}
+                    {workoutActiveMinutes}
                   </div>
                   <span className='text-[12px] text-gray-400 font-medium'>
                     min
                   </span>
                 </div>
-                <div className='mt-auto pt-2.5 border-t border-white/5 grid grid-cols-2 gap-2'>
-                  <div>
-                    <div className='text-[10px] uppercase tracking-wide text-gray-500'>
-                      Steps
-                    </div>
-                    <div className='text-[14px] font-semibold text-white'>
-                      {activeMinutes}m
-                    </div>
-                  </div>
-                  <div>
-                    <div className='text-[10px] uppercase tracking-wide text-gray-500'>
-                      Workout
-                    </div>
-                    <div className='text-[14px] font-semibold text-white'>
-                      {workoutActiveMinutes}m
-                    </div>
-                  </div>
+                <div className='mt-auto pt-2 border-t border-white/5 text-[11px] text-gray-400'>
+                  Stay active!
                 </div>
               </div>
             </>

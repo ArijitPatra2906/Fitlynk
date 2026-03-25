@@ -22,6 +22,10 @@ export default function TemplatesPage() {
   const [loading, setLoading] = useState(true)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
   const [showTemplateDialog, setShowTemplateDialog] = useState(false)
+  const [showStartWorkoutDialog, setShowStartWorkoutDialog] = useState(false)
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(
+    null,
+  )
   const [deletingTemplateId, setDeletingTemplateId] = useState<string | null>(
     null,
   )
@@ -73,6 +77,23 @@ export default function TemplatesPage() {
     e.preventDefault()
     e.stopPropagation()
     router.push(`/workout?workoutId=${id}&mode=template`)
+  }
+
+  const handleStartFromTemplate = (id: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setSelectedTemplateId(id)
+    setShowStartWorkoutDialog(true)
+  }
+
+  const handleConfirmStartWorkout = (name: string) => {
+    setShowStartWorkoutDialog(false)
+    if (selectedTemplateId) {
+      router.push(
+        `/workout?templateId=${selectedTemplateId}&name=${encodeURIComponent(name)}`,
+      )
+      setSelectedTemplateId(null)
+    }
   }
 
   const handleDelete = (id: string, e: React.MouseEvent) => {
@@ -191,7 +212,10 @@ export default function TemplatesPage() {
                 secondaryMetadata={`${totalSets} ${totalSets === 1 ? 'set' : 'sets'}`}
                 icon={icon}
                 iconColor={color}
-                href={`/workout?templateId=${template._id}`}
+                onAction={handleStartFromTemplate}
+                actionIcon='play'
+                actionColor='#10B981'
+                actionLabel='Start Workout'
                 onEdit={handleEdit}
                 onDelete={handleDelete}
               />
@@ -226,6 +250,17 @@ export default function TemplatesPage() {
         onSubmit={handleCreateTemplate}
         title='Create Template'
         placeholder='e.g., Upper Body, Full Body'
+      />
+
+      <WorkoutNameDialog
+        isOpen={showStartWorkoutDialog}
+        onClose={() => {
+          setShowStartWorkoutDialog(false)
+          setSelectedTemplateId(null)
+        }}
+        onSubmit={handleConfirmStartWorkout}
+        title='Start Workout from Template'
+        placeholder='e.g., Leg Day, Push A'
       />
     </>
   )

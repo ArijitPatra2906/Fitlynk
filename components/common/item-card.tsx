@@ -16,6 +16,10 @@ interface ItemCardProps {
   onClick?: (id: string, e: React.MouseEvent) => void
   onEdit?: (id: string, e: React.MouseEvent) => void
   onDelete?: (id: string, e: React.MouseEvent) => void
+  onAction?: (id: string, e: React.MouseEvent) => void
+  actionIcon?: string
+  actionColor?: string
+  actionLabel?: string
   canDelete?: boolean
   canEdit?: boolean
   badge?: string
@@ -34,20 +38,33 @@ export function ItemCard({
   onClick,
   onEdit,
   onDelete,
+  onAction,
+  actionIcon = 'play',
+  actionColor = '#10B981',
+  actionLabel,
   canDelete = true,
   canEdit = true,
   badge,
 }: ItemCardProps) {
-  const showActions = canEdit || canDelete
+  const showActions = canEdit || canDelete || onAction
   const isLiveBadge = badge?.toUpperCase() === 'LIVE'
-  const handleEdit = (e: React.MouseEvent) => {
-    if (onClick) onClick(id, e)
-  }
   const handleClick = (e: React.MouseEvent) => {
     if (onClick) onClick(id, e)
   }
+  const handleEditClick = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (onEdit) onEdit(id, e)
+  }
   const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
     if (onDelete) onDelete(id, e)
+  }
+  const handleAction = (e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (onAction) onAction(id, e)
   }
 
   const content = (
@@ -122,7 +139,7 @@ export function ItemCard({
         <Link
           href={href}
           className='flex items-center gap-2.5 sm:gap-3.5 flex-1 min-w-0'
-          onClick={handleEdit}
+          onClick={handleClick}
         >
           {content}
         </Link>
@@ -133,9 +150,18 @@ export function ItemCard({
       )}
       {showActions && (
         <div className='flex gap-1 sm:gap-1.5 flex-shrink-0'>
+          {onAction && (
+            <button
+              onClick={handleAction}
+              className='w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-green-500/10 border border-green-500/20 flex items-center justify-center hover:bg-green-500/20 transition-colors'
+              title={actionLabel}
+            >
+              <Icon name={actionIcon} size={14} color={actionColor} />
+            </button>
+          )}
           {canEdit && (
             <button
-              onClick={handleEdit}
+              onClick={handleEditClick}
               className='w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-blue-500/10 border border-blue-500/20 flex items-center justify-center hover:bg-blue-500/20 transition-colors'
             >
               <Icon name='edit' size={14} color='#3B82F6' />

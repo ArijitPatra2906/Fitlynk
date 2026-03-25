@@ -31,6 +31,13 @@ export default function ExercisePage() {
   const [error, setError] = useState<string | null>(null)
   const [showWorkoutDialog, setShowWorkoutDialog] = useState(false)
   const [showTemplateDialog, setShowTemplateDialog] = useState(false)
+  const [showConvertDialog, setShowConvertDialog] = useState(false)
+  const [showStartFromTemplateDialog, setShowStartFromTemplateDialog] =
+    useState(false)
+  const [convertingWorkoutId, setConvertingWorkoutId] = useState<string | null>(
+    null,
+  )
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [exercises, setExercises] = useState<Exercise[]>([])
   const [showEditDialog, setShowEditDialog] = useState(false)
   const [editingExercise, setEditingExercise] = useState<Exercise | null>(null)
@@ -166,7 +173,33 @@ export default function ExercisePage() {
   const handleEditTemplate = (templateId: string, e: React.MouseEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    router.push(`/workout?templateId=${templateId}&mode=template`)
+    router.push(`/workout?workoutId=${templateId}&mode=template`)
+  }
+
+  const handleStartFromTemplate = (templateId: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setConvertingWorkoutId(templateId)
+    setShowStartFromTemplateDialog(true)
+  }
+
+  const handleStartWorkoutFromTemplate = (name: string) => {
+    if (isSubmitting) return // Prevent double submission
+    setIsSubmitting(true)
+    setShowStartFromTemplateDialog(false)
+
+    if (convertingWorkoutId) {
+      router.push(
+        `/workout?templateId=${convertingWorkoutId}&name=${encodeURIComponent(
+          name,
+        )}`,
+      )
+      setConvertingWorkoutId(null)
+      // Reset after navigation
+      setTimeout(() => setIsSubmitting(false), 1000)
+    } else {
+      setIsSubmitting(false)
+    }
   }
 
   const handleDeleteExercise = (exerciseId: string) => {
@@ -253,6 +286,7 @@ export default function ExercisePage() {
       console.error(`Error deleting ${deleteType}:`, err)
       toast.error(`Failed to delete ${deleteType}`)
     } finally {
+      setShowDeleteDialog(false)
       setDeletingItemId(null)
     }
   }
@@ -261,6 +295,48 @@ export default function ExercisePage() {
     e.preventDefault()
     e.stopPropagation()
     router.push(`/workout?workoutId=${workoutId}`)
+  }
+
+  const handleConvertToTemplate = (workoutId: string, e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setConvertingWorkoutId(workoutId)
+    setShowConvertDialog(true)
+  }
+
+  const handleConfirmConvertToTemplate = async (name: string) => {
+    setShowConvertDialog(false)
+    if (!convertingWorkoutId) return
+
+    try {
+      const token = await getAuthToken()
+      if (!token) return
+
+      const res = await apiClient.post(
+        `/api/workouts/${convertingWorkoutId}/to-template`,
+        { name },
+        token,
+      )
+
+      if (res.success) {
+        toast.success('Workout converted to template successfully')
+        // Refresh the templates list
+        const templatesRes = await apiClient.get(
+          '/api/workouts?is_template=true&limit=50',
+          token,
+        )
+        if (templatesRes.success && templatesRes.data?.workouts) {
+          setTemplates(templatesRes.data.workouts)
+        }
+      } else {
+        toast.error('Failed to convert workout to template')
+      }
+    } catch (err) {
+      console.error('Error converting workout to template:', err)
+      toast.error('Failed to convert workout to template')
+    } finally {
+      setConvertingWorkoutId(null)
+    }
   }
 
   if (loading) {
@@ -374,34 +450,45 @@ export default function ExercisePage() {
         </div>
       ) : (
         <div className='mb-5'>
-          {completedWorkouts?.slice(0, 5).map((workout) => (
-            <ItemCard
-              key={workout._id}
-              id={workout._id}
-              title={workout.name}
-              subtitle={new Date(workout.started_at).toLocaleDateString(
-                'en-US',
-                {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                },
-              )}
-              metadata={`${workout.calories || 0} kcal`}
-              secondaryMetadata={`${workout.exercises?.length || 0} exercises`}
-              icon={workout.ended_at ? 'dumbbell' : 'timer-reset'}
-              iconColor={workout.ended_at ? '#3B82F6' : '#F59E0B'}
-              iconBg={
-                workout.ended_at
-                  ? 'rgba(59, 130, 246, 0.12)'
-                  : 'rgba(245, 158, 11, 0.12)'
-              }
-              badge={workout.ended_at ? undefined : 'LIVE'}
-              href={`/workout?workoutId=${workout._id}`}
-              onEdit={handleEditWorkout}
-              onDelete={handleDeleteWorkout}
-            />
-          ))}
+          {completedWorkouts?.slice(0, 5).map((workout) => {
+            const caloriesDisplay = `${workout.calories || 0} kcal`
+            return (
+              <ItemCard
+                key={workout._id}
+                id={workout._id}
+                title={workout.name}
+                subtitle={new Date(workout.started_at).toLocaleDateString(
+                  'en-US',
+                  {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  },
+                )}
+                metadata={caloriesDisplay}
+                secondaryMetadata={`${
+                  workout.exercises?.length || 0
+                } exercises`}
+                icon={workout.ended_at ? 'dumbbell' : 'timer-reset'}
+                iconColor={workout.ended_at ? '#3B82F6' : '#F59E0B'}
+                iconBg={
+                  workout.ended_at
+                    ? 'rgba(59, 130, 246, 0.12)'
+                    : 'rgba(245, 158, 11, 0.12)'
+                }
+                badge={workout.ended_at ? undefined : 'LIVE'}
+                href={`/workout?workoutId=${workout._id}`}
+                onAction={
+                  workout.ended_at ? handleConvertToTemplate : undefined
+                }
+                actionIcon='file-plus'
+                actionColor='#8B5CF6'
+                actionLabel='Convert to Template'
+                onEdit={handleEditWorkout}
+                onDelete={handleDeleteWorkout}
+              />
+            )
+          })}
         </div>
       )}
 
@@ -440,10 +527,15 @@ export default function ExercisePage() {
                 title={template.name}
                 subtitle={getExerciseNames(template)}
                 metadata={`${template.exercises?.length || 0} exercises`}
-                secondaryMetadata={`${totalSets} ${totalSets === 1 ? 'set' : 'sets'}`}
+                secondaryMetadata={`${totalSets} ${
+                  totalSets === 1 ? 'set' : 'sets'
+                }`}
                 icon={icon}
                 iconColor={color}
-                href={`/workout?templateId=${template._id}`}
+                onAction={handleStartFromTemplate}
+                actionIcon='play'
+                actionColor='#10B981'
+                actionLabel='Start Workout'
                 onEdit={handleEditTemplate}
                 onDelete={handleDeleteTemplate}
               />
@@ -512,10 +604,32 @@ export default function ExercisePage() {
       />
 
       <WorkoutNameDialog
+        isOpen={showStartFromTemplateDialog}
+        onClose={() => {
+          setShowStartFromTemplateDialog(false)
+          setConvertingWorkoutId(null)
+        }}
+        onSubmit={handleStartWorkoutFromTemplate}
+        title='Start Workout from Template'
+        placeholder='e.g., Leg Day, Push A'
+      />
+
+      <WorkoutNameDialog
         isOpen={showTemplateDialog}
         onClose={() => setShowTemplateDialog(false)}
         onSubmit={handleCreateTemplate}
         title='Create Template'
+        placeholder='e.g., Upper Body, Full Body'
+      />
+
+      <WorkoutNameDialog
+        isOpen={showConvertDialog}
+        onClose={() => {
+          setShowConvertDialog(false)
+          setConvertingWorkoutId(null)
+        }}
+        onSubmit={handleConfirmConvertToTemplate}
+        title='Convert to Template'
         placeholder='e.g., Upper Body, Full Body'
       />
 
@@ -536,7 +650,13 @@ export default function ExercisePage() {
           setDeletingItemId(null)
         }}
         onConfirm={confirmDelete}
-        title={`Delete ${deleteType === 'template' ? 'Template' : deleteType === 'exercise' ? 'Exercise' : 'Workout'}`}
+        title={`Delete ${
+          deleteType === 'template'
+            ? 'Template'
+            : deleteType === 'exercise'
+            ? 'Exercise'
+            : 'Workout'
+        }`}
         message={`Are you sure you want to delete this ${deleteType}? This action cannot be undone.`}
         confirmText='Delete'
         cancelText='Cancel'
