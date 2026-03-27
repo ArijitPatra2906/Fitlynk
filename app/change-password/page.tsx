@@ -24,16 +24,11 @@ export default function ChangePasswordPage() {
         const { getAuthToken } = await import('@/lib/auth/auth-token')
         const { apiClient } = await import('@/lib/api/client')
         const token = await getAuthToken()
-        if (!token) {
-          router.push('/login')
-          return
-        }
+        // AuthGuard ensures token exists
+        if (!token) return
 
         const res = await apiClient.get('/api/auth/me', token)
-        if (!res.success || !res.data) {
-          router.push('/login')
-          return
-        }
+        if (!res.success || !res.data) return
 
         setAuthProvider(res.data.auth_provider)
 

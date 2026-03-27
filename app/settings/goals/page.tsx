@@ -35,11 +35,8 @@ export default function GoalsPage() {
         const { apiClient } = await import('@/lib/api/client')
         const token = await getAuthToken()
 
-        if (!token) {
-          console.error('No auth token found')
-          router.push('/login')
-          return
-        }
+        // AuthGuard ensures token exists
+        if (!token) return
 
         // Fetch nutrition goals
         const goalsResponse = await apiClient.get(

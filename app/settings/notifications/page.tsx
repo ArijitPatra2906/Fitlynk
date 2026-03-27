@@ -20,10 +20,8 @@ export default function NotificationSettingsPage() {
     const fetchPreferences = async () => {
       try {
         const token = await getAuthToken()
-        if (!token) {
-          router.push('/login')
-          return
-        }
+        // AuthGuard ensures token exists
+        if (!token) return
 
         const response = await apiClient.get(
           '/api/notifications/preferences',

@@ -62,10 +62,8 @@ function TodosPageContent() {
       const { apiClient } = await import('@/lib/api/client')
       const token = await getAuthToken()
 
-      if (!token) {
-        router.push('/login')
-        return
-      }
+      // AuthGuard ensures token exists
+      if (!token) return
 
       let url = '/api/todos'
       const params: string[] = []

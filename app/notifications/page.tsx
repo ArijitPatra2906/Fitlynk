@@ -104,10 +104,8 @@ export default function NotificationsPage() {
       }
 
       const token = await getAuthToken()
-      if (!token) {
-        router.push('/login')
-        return
-      }
+      // AuthGuard ensures token exists
+      if (!token) return
 
       const readParam = filter === 'unread' ? 'read=false&' : ''
       const queryParams = `?${readParam}page=${pageNum}&limit=${ITEMS_PER_PAGE}`

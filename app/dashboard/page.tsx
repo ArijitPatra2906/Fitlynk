@@ -200,11 +200,8 @@ export default function DashboardPage() {
         const { apiClient } = await import('@/lib/api/client')
         const token = await getAuthToken()
 
-        if (!token) {
-          console.error('No auth token found')
-          router.push('/login')
-          return
-        }
+        // AuthGuard ensures token exists, but TypeScript doesn't know that
+        if (!token) return
 
         // Check if user has completed onboarding
         const userRes = await apiClient.get('/api/auth/me', token)

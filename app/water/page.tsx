@@ -1,15 +1,11 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Icon } from '@/components/ui/icon'
-import { Pagination } from '@/components/ui/pagination'
 import { WaterPageSkeleton } from '@/components/ui/skeleton'
 import { WaterCalendarView } from '@/components/water/water-calendar-view'
 import { WaterDayDetailModal } from '@/components/water/water-day-detail-modal'
 import { toast } from 'sonner'
-
-type WaterFilter = 7 | 30
 
 interface WaterLogRow {
   _id: string
@@ -35,7 +31,6 @@ interface GoalPayload {
 }
 
 const DEFAULT_WATER_GOAL_ML = 3000
-const PAGE_SIZE = 10
 const MAX_WATER_LOG_ML = 50000
 
 const getDateKey = (date: Date) => {
@@ -81,15 +76,12 @@ const formatTime = (iso?: string) => {
 }
 
 export default function WaterPage() {
-  const router = useRouter()
   const [loading, setLoading] = useState(true)
   const [logsLoading, setLogsLoading] = useState(false)
   const [savingGoal, setSavingGoal] = useState(false)
   const [savingWater, setSavingWater] = useState(false)
   const [error, setError] = useState('')
 
-  const [filter, setFilter] = useState<WaterFilter>(7)
-  const [page, setPage] = useState(1)
   const [waterGoalMl, setWaterGoalMl] = useState(DEFAULT_WATER_GOAL_ML)
   const [todayTotalMl, setTodayTotalMl] = useState(0)
   const [manualAmount, setManualAmount] = useState('250')
@@ -104,11 +96,6 @@ export default function WaterPage() {
     water_target_ml: DEFAULT_WATER_GOAL_ML,
   })
   const [logs, setLogs] = useState<WaterLogRow[]>([])
-  const [expandedDay, setExpandedDay] = useState<string | null>(null)
-  const [pagination, setPagination] = useState({
-    total: 0,
-    totalPages: 1,
-  })
   const [isDayDetailOpen, setIsDayDetailOpen] = useState(false)
   const [selectedDate, setSelectedDate] = useState<Date | null>(null)
   const [isGoalDrawerOpen, setIsGoalDrawerOpen] = useState(false)
@@ -145,38 +132,32 @@ export default function WaterPage() {
     return Array.from(map.values()).sort((a, b) => b.day.localeCompare(a.day))
   }, [logs])
 
-  const fetchWaterLogs = useCallback(
-    async (token: string, nextFilter: WaterFilter, nextPage: number) => {
-      setLogsLoading(true)
-      try {
-        const { apiClient } = await import('@/lib/api/client')
-        const { startDate, endDate } = buildDateRange(nextFilter)
+  const fetchWaterLogs = useCallback(async (token: string) => {
+    setLogsLoading(true)
+    try {
+      const { apiClient } = await import('@/lib/api/client')
+      // Fetch logs for the last 90 days to support calendar navigation
+      const { startDate, endDate } = buildDateRange(90)
 
-        const res = await apiClient.get(
-          `/api/metrics/water?startDate=${startDate}&endDate=${endDate}&page=${nextPage}&limit=${PAGE_SIZE}`,
-          token,
-        )
-        if (!res.success) {
-          throw new Error(res.error || 'Failed to fetch water logs')
-        }
-
-        const payload = res.data || {}
-        const items = Array.isArray(payload.logs) ? payload.logs : []
-        const pager = payload.pagination || {}
-
-        setLogs(items)
-        setPagination({
-          total: Number(pager.total || 0),
-          totalPages: Math.max(1, Number(pager.totalPages || 1)),
-        })
-      } catch (e: any) {
-        setError(e.message || 'Failed to fetch water logs')
-      } finally {
-        setLogsLoading(false)
+      // Fetch all logs without pagination for calendar view
+      const res = await apiClient.get(
+        `/api/metrics/water?startDate=${startDate}&endDate=${endDate}`,
+        token,
+      )
+      if (!res.success) {
+        throw new Error(res.error || 'Failed to fetch water logs')
       }
-    },
-    [],
-  )
+
+      const payload = res.data || {}
+      const items = Array.isArray(payload.logs) ? payload.logs : []
+
+      setLogs(items)
+    } catch (e: any) {
+      setError(e.message || 'Failed to fetch water logs')
+    } finally {
+      setLogsLoading(false)
+    }
+  }, [])
 
   const refreshTodayWater = useCallback(async (token: string) => {
     const { apiClient } = await import('@/lib/api/client')
@@ -201,10 +182,8 @@ export default function WaterPage() {
         const { apiClient } = await import('@/lib/api/client')
         const token = await getAuthToken()
 
-        if (!token) {
-          router.push('/login')
-          return
-        }
+        // AuthGuard ensures token exists, but TypeScript doesn't know that
+        if (!token) return
 
         const goalsRes = await apiClient.get(
           '/api/metrics/goals/current',
@@ -238,32 +217,25 @@ export default function WaterPage() {
     }
 
     init()
-  }, [refreshTodayWater, router])
+  }, [refreshTodayWater])
 
   useEffect(() => {
     const refreshLogs = async () => {
       const { getAuthToken } = await import('@/lib/auth/auth-token')
       const token = await getAuthToken()
       if (!token) return
-      await fetchWaterLogs(token, filter, page)
+      await fetchWaterLogs(token)
     }
 
     refreshLogs()
-  }, [fetchWaterLogs, filter, page])
+  }, [fetchWaterLogs])
 
   // Reset water goal input when drawer opens
   useEffect(() => {
     if (isGoalDrawerOpen) {
-      setWaterGoalMl(
-        goalPayload.water_target_ml || DEFAULT_WATER_GOAL_ML
-      )
+      setWaterGoalMl(goalPayload.water_target_ml || DEFAULT_WATER_GOAL_ML)
     }
   }, [isGoalDrawerOpen, goalPayload.water_target_ml])
-
-  const handleFilterChange = (next: WaterFilter) => {
-    setFilter(next)
-    setPage(1)
-  }
 
   const handleGoalSave = async () => {
     try {
@@ -271,10 +243,7 @@ export default function WaterPage() {
       const { getAuthToken } = await import('@/lib/auth/auth-token')
       const { apiClient } = await import('@/lib/api/client')
       const token = await getAuthToken()
-      if (!token) {
-        router.push('/login')
-        return
-      }
+      if (!token) return
 
       const response = await apiClient.post(
         '/api/metrics/goals',
@@ -305,10 +274,7 @@ export default function WaterPage() {
       const { getAuthToken } = await import('@/lib/auth/auth-token')
       const { apiClient } = await import('@/lib/api/client')
       const token = await getAuthToken()
-      if (!token) {
-        router.push('/login')
-        return
-      }
+      if (!token) return
 
       const response = await apiClient.post(
         '/api/metrics/water',
@@ -323,7 +289,7 @@ export default function WaterPage() {
       }
 
       await refreshTodayWater(token)
-      await fetchWaterLogs(token, filter, page)
+      await fetchWaterLogs(token)
       setManualAmount('0')
       toast.success(`${safeAmount} ml logged`)
     } catch (e: any) {
@@ -506,7 +472,9 @@ export default function WaterPage() {
               <div
                 className='absolute inset-0 bg-black/60 backdrop-blur-sm'
                 onClick={() => {
-                  setWaterGoalMl(goalPayload.water_target_ml || DEFAULT_WATER_GOAL_ML)
+                  setWaterGoalMl(
+                    goalPayload.water_target_ml || DEFAULT_WATER_GOAL_ML,
+                  )
                   setIsGoalDrawerOpen(false)
                 }}
               />
@@ -531,7 +499,9 @@ export default function WaterPage() {
                     </div>
                     <button
                       onClick={() => {
-                        setWaterGoalMl(goalPayload.water_target_ml || DEFAULT_WATER_GOAL_ML)
+                        setWaterGoalMl(
+                          goalPayload.water_target_ml || DEFAULT_WATER_GOAL_ML,
+                        )
                         setIsGoalDrawerOpen(false)
                       }}
                       className='w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center hover:bg-white/10 transition-colors'
